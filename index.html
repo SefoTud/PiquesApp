@@ -57,20 +57,20 @@
     </div>
 
     <div id="pantalla-juego" class="w-full max-w-md flex flex-col hidden">
-                <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-center">
-            <div>Sala: <strong id="display-id-grupo" class="text-amber-400 font-mono font-bold">...</strong> <span id="badge-tipo-sala" class="text-[10px] ml-1 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700"></span></div>
-            <div class="flex items-center gap-2">
-                <button onclick="activarNotificacionesPush()" title="Activar avisos" class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-indigo-500 hover:text-slate-950 transition-all cursor-pointer flex items-center shadow-sm">
-                    🔔 Avisos
-                </button>
+                <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-start gap-2">
+            <div class="flex flex-wrap items-center gap-y-1 flex-1 min-w-0">
+                <span class="shrink-0">Sala: </span>
+                <strong id="display-id-grupo" class="text-amber-400 font-mono font-bold truncate max-w-[100px] ml-1 inline-block align-bottom">...</strong> 
+                <span id="badge-tipo-sala" class="text-[10px] ml-1 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 shrink-0"></span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
                 <div class="bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded flex items-center gap-1.5">
                     <span class="text-[10px]">👤</span>
                     <strong id="mi-nombre-display" class="text-emerald-400 truncate max-w-[60px]">...</strong>
                 </div>
-                                <button onclick="salirDelGrupo()" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/30 px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center shadow-sm">
+                <button onclick="salirDelGrupo()" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/30 px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center shadow-sm">
                     🚪 Salir
                 </button>
-
             </div>
         </div>
 
@@ -185,11 +185,9 @@
         </main>
     </div>
 
-        <script type="module">
+    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-        // NUEVO: Importamos el servicio de mensajería Push
-        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCZTeSDkC7r68FB1dJv32glfFUjOWve2Ns",
@@ -203,52 +201,18 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const messaging = getMessaging(app); // NUEVO: Inicializamos mensajería
         const paletaColoresGlobal = ['#10b981', '#f43f5e', '#eab308', '#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#84cc16'];
-
 
         const urlParams = new URLSearchParams(window.location.search);
         const grupoId = urlParams.get('grupo');
         let estadoActualGrupo = null;
         
-                // ================== FUNCIÓN DE NOTIFICACIONES PUSH qIiLrSDTF8_m_Fjza4aJFBjqYToGpRzG83-RbQtQGCE ==================
-                window.activarNotificacionesPush = function() {
-            Notification.requestPermission().then((permission) => {
-                if (permission === 'granted') {
-                    // 1. Le decimos exactamente a Firebase dónde está el archivo
-                    navigator.serviceWorker.register('./firebase-messaging-sw.js')
-                    .then((registration) => {
-                        // 2. Pedimos el Token usando ese archivo concreto
-                        return getToken(messaging, { 
-                            vapidKey: 'qIiLrSDTF8_m_Fjza4aJFBjqYToGpRzG83-RbQtQGCE  ', // <-- ¡PON TU CLAVE AQUÍ!
-                            serviceWorkerRegistration: registration 
-                        });
-                    })
-                    .then((currentToken) => {
-                        if (currentToken) {
-                            let miNombre = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
-                            if (miNombre && grupoId) {
-                                set(ref(db, `grupos/${grupoId}/tokens_push/${miNombre}`), currentToken);
-                                alert("🔔 ¡Notificaciones activadas! Ahora te avisaremos si te toca votar aunque cierres la web.");
-                            }
-                        }
-                    }).catch((err) => {
-                        alert('🚨 Fallo al crear el Token: ' + err.message);
-                    });
-                } else {
-                    alert("❌ Has denegado los permisos. No te llegarán avisos.");
-                }
-            });
-        };
-
-
-
-                // ESCUCHADOR ZUMBIDOS CON NOTIFICACIÓN DEL SISTEMA
+                // ESCUCHADORES DE ALERTAS (ZUMBIDOS Y NUEVAS PREGUNTAS)
         if (grupoId) {
+            // Escuchador para zumbidos individuales/delegados
             onValue(ref(db, `grupos/${grupoId}/zumbido`), (snapshot) => {
                 const zumbido = snapshot.val();
                 let nombreLocal = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
-                
                 if (zumbido && zumbido.para && nombreLocal) {
                     let meTocaDirecto = zumbido.para.includes(nombreLocal);
                     let misRepresentados = [];
@@ -256,27 +220,16 @@
                         misRepresentados = estadoActualGrupo.delegaciones[nombreLocal].split(',').map(s => s.trim());
                     }
                     let meTocaPorDelegado = misRepresentados.some(d => zumbido.para.includes(d));
-
                     if (meTocaDirecto || meTocaPorDelegado) {
-                        // 1. Que vibre el móvil
                         if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-                        
-                        // 2. QUE SALTE LA NOTIFICACIÓN OFICIAL EN PANTALLA
-                        if (Notification.permission === "granted") {
-                            const notificacion = new Notification("🗳️ Podio - ¡Te buscan!", {
-                                body: "Tienes una votación pendiente en la sala. ¡Entra a dejar tu voto!",
-                                icon: "https://img.icons8.com/color/96/ballot-box.png",
-                                vibrate: [200, 100, 200]
-                            });
-                            
-                            // Si el usuario toca la notificación, le abre la pestaña automáticamente
-                            notificacion.onclick = function() {
-                                window.focus();
-                                this.close();
-                            };
-                        }
-                        console.log("⚠️ ¡Aviso recibido (Directo o Delegado)!");
                     }
+                }
+            });
+
+            // NUEVO: Escuchador global para hacer vibrar al lanzar cualquier pregunta nueva
+            onValue(ref(db, `grupos/${grupoId}/alerta_nueva_pregunta`), (snapshot) => {
+                if (snapshot.val() === true) {
+                    if (navigator.vibrate) navigator.vibrate([300, 150, 300]); // Vibración doble elegante de aviso
                 }
             });
         }
@@ -286,7 +239,7 @@
             const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
             if (despistados.length === 0) return;
             set(ref(db, `grupos/${grupoId}/zumbido`), { para: despistados, timestamp: Date.now() }).then(() => {
-                alert(`📢 ¡Zumbido enviado al bolsillo de: ${despistados.join(', ')}!`);
+                alert(`📢 ¡Zumbido enviado a la pantalla de: ${despistados.join(', ')}!`);
                 setTimeout(() => set(ref(db, `grupos/${grupoId}/zumbido`), null), 2000);
             });
         };
@@ -311,15 +264,16 @@
                         ? `<button onclick="destruirSalaDesdeHistorial('${id}')" class="text-rose-400 hover:text-rose-600 p-1 font-bold text-xs cursor-pointer shadow">🗑️</button>`
                         : `<button onclick="eliminarDeHistorialLocal('${id}')" class="text-slate-400 hover:text-rose-400 p-1 font-bold text-xs cursor-pointer shadow">❌</button>`;
 
-                    listaHistorial.innerHTML += `
+                                        listaHistorial.innerHTML += `
                         <div class="flex gap-2 items-center w-full bg-slate-700/40 border border-slate-600/30 rounded-xl p-1 pr-3 hover:bg-slate-700/80 transition-all">
-                            <button onclick="window.location.search='?grupo=${id}'" class="flex-1 text-left p-2.5 text-xs font-bold truncate text-slate-200 cursor-pointer">
-                                <span>📂 ${tituloSala}</span>
+                            <button onclick="window.location.search='?grupo=${id}'" class="flex-1 min-w-0 text-left p-2.5 text-xs font-bold truncate text-slate-200 cursor-pointer">
+                                <span class="truncate block">📂 ${tituloSala}</span>
                             </button>
-                            <span class="text-[10px] font-mono text-amber-400 font-black uppercase bg-slate-900/40 px-2 py-0.5 rounded border border-amber-500/10 shrink-0">${id}</span>
+                            <span class="text-[10px] font-mono text-amber-400 font-black uppercase bg-slate-900/40 px-2 py-0.5 rounded border border-amber-500/10 shrink-0 max-w-[80px] truncate" title="${id}">${id}</span>
                             ${botonAccionHistorial}
                         </div>
                     `;
+
                 });
             } else { seccionHistorial.classList.add('hidden'); }
         };
@@ -810,7 +764,7 @@
                                 }
                             }
 
-                                                        let btnCerrarAdmin = soyElCreadorOficial 
+                            let btnCerrarAdmin = soyElCreadorOficial 
                                 ? `<div class="flex flex-wrap justify-end gap-1.5">
                                       ${btnCampanaDespertar}
                                       <button onclick="cancelarVotacion('${id}')" class="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-slate-950 font-bold transition-all cursor-pointer whitespace-nowrap shadow-sm" title="Abortar sin guardar">🗑️ Cancelar</button>
@@ -976,8 +930,6 @@
                             });
                             bloqueResultadosInferior += `</div>`;
 
-                                                        bloqueResultadosInferior += `</div>`;
-
                             // Lógica para cambiar el icono según el resultado
                             let iconoGanador = isRechazado ? '❌' : (h.ganadorVoto === 'EMPATE' ? '⚖️' : '🥇');
 
@@ -989,7 +941,6 @@
                             `;
 
                             if (isPollPublico) {
-
                                 const stringVotos = encodeURIComponent(JSON.stringify(h.votosDetalle || {}));
                                 clickAttr = `onclick="mostrarDetalleVotos('${stringVotos}', '${h.titulo.replace(/'/g, "\\'")}')"`;
                                 borderStyle = 'border-purple-500/40 hover:bg-slate-700/40 cursor-pointer active:scale-[0.99] transition-all';
@@ -1164,7 +1115,7 @@
                 const nuevaPeticionId = 'pet_' + Date.now();
                 const updates = {};
                 
-                updates[`/peticiones/${nuevaPeticionId}`] = { 
+                                updates[`/peticiones/${nuevaPeticionId}`] = { 
                     para: b.para, 
                     solicitado_por: miNombre, 
                     votos: {}, 
@@ -1175,9 +1126,13 @@
                     opciones: b.opciones || ['SÍ', 'NO', 'ABS'],
                     tipoMayoria: b.tipoMayoria || 'simple'
                 };
-                
                 updates[`/borradores/${idBor}`] = null;
-                update(grupoRef, updates);
+                updates['/alerta_nueva_pregunta'] = true;
+                
+                update(grupoRef, updates).then(() => {
+                    setTimeout(() => update(grupoRef, { alerta_nueva_pregunta: null }), 1000);
+                });
+
             };
 
             window.borrarBorrador = function(idBor) {
@@ -1231,7 +1186,7 @@
                         opcionesArray = opcionesCrudas.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "");
                     }
 
-                    const updates = {};
+                                        const updates = {};
                     updates[`/peticiones/${nuevaPeticionId}`] = { 
                         para: valor, 
                         solicitado_por: miNombre, 
@@ -1243,12 +1198,13 @@
                         opciones: opcionesArray,
                         tipoMayoria: tipoMayoria
                     };
-                    update(grupoRef, updates);
-                    if (inputOpcionesCustom) inputOpcionesCustom.value = ""; 
-                } else {
-                    const updates = {};
-                    updates[`/participantes/${valor}`] = 0;
-                    update(grupoRef, updates);
+                    // Activamos la señal de alerta
+                    updates['/alerta_nueva_pregunta'] = true;
+                    update(grupoRef, updates).then(() => {
+                        // La apagamos un segundo después para que esté lista para la siguiente pregunta
+                        setTimeout(() => update(grupoRef, { alerta_nueva_pregunta: null }), 1000);
+                    });
+
                 }
                 input.value = ""; 
             };
@@ -1309,7 +1265,7 @@
                 set(ref(db, `grupos/${grupoId}/expulsados/${nombreParaPerdonar.toLowerCase().trim()}`), null);
             };
 
-                       window.cancelarVotacion = function(id) {
+            window.cancelarVotacion = function(id) {
                 if (!confirm("🚨 ¿Seguro que quieres CANCELAR y eliminar esta votación en curso? NO se guardará en el historial.")) return;
                 
                 // Si había un temporizador corriendo, lo matamos
