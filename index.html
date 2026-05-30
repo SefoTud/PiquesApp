@@ -57,15 +57,22 @@
     </div>
 
     <div id="pantalla-juego" class="w-full max-w-md flex flex-col hidden">
-        <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-center">
+                <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-center">
             <div>Sala: <strong id="display-id-grupo" class="text-amber-400 font-mono font-bold">...</strong> <span id="badge-tipo-sala" class="text-[10px] ml-1 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700"></span></div>
-            <div class="flex items-center gap-3">
-                <span>Jugando como: <strong id="mi-nombre-display" class="text-emerald-400">...</strong></span>
+            <div class="flex items-center gap-2">
+                <button onclick="activarNotificacionesPush()" title="Activar avisos" class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-indigo-500 hover:text-slate-950 transition-all cursor-pointer flex items-center shadow-sm">
+                    🔔 Avisos
+                </button>
+                <div class="bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded flex items-center gap-1.5">
+                    <span class="text-[10px]">👤</span>
+                    <strong id="mi-nombre-display" class="text-emerald-400 truncate max-w-[60px]">...</strong>
+                </div>
                 <button onclick="salirDelGrupo()" class="bg-slate-700 hover:bg-rose-500 text-slate-300 hover:text-slate-950 px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer">
-                    🚪 Salir
+                    🚪
                 </button>
             </div>
         </div>
+
 
         <div id="pantalla-espera" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-8 border border-amber-500/30 hidden text-center mt-6">
             <div class="text-5xl mb-6 animate-pulse">⏳</div>
@@ -177,9 +184,11 @@
         </main>
     </div>
 
-    <script type="module">
+        <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        // NUEVO: Importamos el servicio de mensajería Push
+        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCZTeSDkC7r68FB1dJv32glfFUjOWve2Ns",
@@ -193,11 +202,38 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const messaging = getMessaging(app); // NUEVO: Inicializamos mensajería
         const paletaColoresGlobal = ['#10b981', '#f43f5e', '#eab308', '#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#84cc16'];
+
 
         const urlParams = new URLSearchParams(window.location.search);
         const grupoId = urlParams.get('grupo');
-        let estadoActualGrupo = null; 
+        let estadoActualGrupo = null;
+        
+                // ================== FUNCIÓN DE NOTIFICACIONES PUSH ==================
+        window.activarNotificacionesPush = function() {
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    // ¡OJO! CAMBIA EL TEXTO DE ABAJO POR TU CLAVE VAPID REAL DE FIREBASE
+                    getToken(messaging, { vapidKey: 'qIiLrSDTF8_m_Fjza4aJFBjqYToGpRzG83-RbQtQGCE' }).then((currentToken) => {
+                        if (currentToken) {
+                            let miNombre = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
+                            if (miNombre && grupoId) {
+                                // Guardamos la "dirección" de este móvil en la base de datos
+                                set(ref(db, `grupos/${grupoId}/tokens_push/${miNombre}`), currentToken);
+                                alert("🔔 ¡Notificaciones activadas! Ahora te avisaremos si te toca votar aunque cierres la web.");
+                            }
+                        }
+                    }).catch((err) => {
+                        console.log('Error al obtener el token: ', err);
+                    });
+                } else {
+                    alert("❌ Has denegado los permisos. No te llegarán avisos.");
+                }
+            });
+        };
+        // =====================================================================
+
 
         // ESCUCHADOR ZUMBIDOS
         if (grupoId) {
