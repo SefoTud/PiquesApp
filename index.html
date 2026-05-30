@@ -67,9 +67,10 @@
                     <span class="text-[10px]">👤</span>
                     <strong id="mi-nombre-display" class="text-emerald-400 truncate max-w-[60px]">...</strong>
                 </div>
-                <button onclick="salirDelGrupo()" class="bg-slate-700 hover:bg-rose-500 text-slate-300 hover:text-slate-950 px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer">
-                    🚪
+                                <button onclick="salirDelGrupo()" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/30 px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center shadow-sm">
+                    🚪 Salir
                 </button>
+
             </div>
         </div>
 
@@ -235,7 +236,7 @@
         // =====================================================================
 
 
-        // ESCUCHADOR ZUMBIDOS
+                // ESCUCHADOR ZUMBIDOS CON NOTIFICACIÓN DEL SISTEMA
         if (grupoId) {
             onValue(ref(db, `grupos/${grupoId}/zumbido`), (snapshot) => {
                 const zumbido = snapshot.val();
@@ -250,12 +251,29 @@
                     let meTocaPorDelegado = misRepresentados.some(d => zumbido.para.includes(d));
 
                     if (meTocaDirecto || meTocaPorDelegado) {
+                        // 1. Que vibre el móvil
                         if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+                        
+                        // 2. QUE SALTE LA NOTIFICACIÓN OFICIAL EN PANTALLA
+                        if (Notification.permission === "granted") {
+                            const notificacion = new Notification("🗳️ Podio - ¡Te buscan!", {
+                                body: "Tienes una votación pendiente en la sala. ¡Entra a dejar tu voto!",
+                                icon: "https://img.icons8.com/color/96/ballot-box.png",
+                                vibrate: [200, 100, 200]
+                            });
+                            
+                            // Si el usuario toca la notificación, le abre la pestaña automáticamente
+                            notificacion.onclick = function() {
+                                window.focus();
+                                this.close();
+                            };
+                        }
                         console.log("⚠️ ¡Aviso recibido (Directo o Delegado)!");
                     }
                 }
             });
         }
+
 
         window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
             const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
@@ -785,8 +803,12 @@
                                 }
                             }
 
-                            let btnCerrarAdmin = soyElCreadorOficial 
-                                ? `<div class="flex flex-wrap justify-end gap-1.5">${btnCampanaDespertar}<button onclick="cerrarVotacionManualmente('${id}', '${peticion.para.replace(/'/g, "\\'")}')" class="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded hover:bg-purple-500 hover:text-slate-950 font-bold transition-all cursor-pointer whitespace-nowrap shadow-sm">🔒 Cerrar</button></div>`
+                                                        let btnCerrarAdmin = soyElCreadorOficial 
+                                ? `<div class="flex flex-wrap justify-end gap-1.5">
+                                      ${btnCampanaDespertar}
+                                      <button onclick="cancelarVotacion('${id}')" class="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-slate-950 font-bold transition-all cursor-pointer whitespace-nowrap shadow-sm" title="Abortar sin guardar">🗑️ Cancelar</button>
+                                      <button onclick="cerrarVotacionManualmente('${id}', '${peticion.para.replace(/'/g, "\\'")}')" class="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded hover:bg-purple-500 hover:text-slate-950 font-bold transition-all cursor-pointer whitespace-nowrap shadow-sm">🔒 Cerrar</button>
+                                   </div>`
                                 : '';
 
                             listaDiv.innerHTML += `
@@ -1278,6 +1300,21 @@
             window.indultarUsuario = function(nombreParaPerdonar) {
                 if (!confirm(`¿Quieres perdonar a "${nombreParaPerdonar.toUpperCase()}"?`)) return;
                 set(ref(db, `grupos/${grupoId}/expulsados/${nombreParaPerdonar.toLowerCase().trim()}`), null);
+            };
+
+                       window.cancelarVotacion = function(id) {
+                if (!confirm("🚨 ¿Seguro que quieres CANCELAR y eliminar esta votación en curso? NO se guardará en el historial.")) return;
+                
+                // Si había un temporizador corriendo, lo matamos
+                if (window.intervalsVotaciones && window.intervalsVotaciones[id]) {
+                    clearInterval(window.intervalsVotaciones[id]);
+                    delete window.intervalsVotaciones[id];
+                }
+                
+                // Borramos la petición de la base de datos sin escribir en el historial
+                const updates = {};
+                updates[`/peticiones/${id}`] = null;
+                update(grupoRef, updates);
             };
 
             window.cerrarVotacionManualmente = function(id, preguntaTexto) {
