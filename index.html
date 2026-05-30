@@ -211,30 +211,36 @@
         const grupoId = urlParams.get('grupo');
         let estadoActualGrupo = null;
         
-                // ================== FUNCIÓN DE NOTIFICACIONES PUSH ==================
-        window.activarNotificacionesPush = function() {
+                // ================== FUNCIÓN DE NOTIFICACIONES PUSH qIiLrSDTF8_m_Fjza4aJFBjqYToGpRzG83-RbQtQGCE ==================
+                window.activarNotificacionesPush = function() {
             Notification.requestPermission().then((permission) => {
                 if (permission === 'granted') {
-                    // ¡OJO! CAMBIA EL TEXTO DE ABAJO POR TU CLAVE VAPID REAL DE FIREBASE
-                    getToken(messaging, { vapidKey: 'qIiLrSDTF8_m_Fjza4aJFBjqYToGpRzG83-RbQtQGCE' }).then((currentToken) => {
+                    // 1. Le decimos exactamente a Firebase dónde está el archivo
+                    navigator.serviceWorker.register('./firebase-messaging-sw.js')
+                    .then((registration) => {
+                        // 2. Pedimos el Token usando ese archivo concreto
+                        return getToken(messaging, { 
+                            vapidKey: 'qIiLrSDTF8_m_Fjza4aJFBjqYToGpRzG83-RbQtQGCE  ', // <-- ¡PON TU CLAVE AQUÍ!
+                            serviceWorkerRegistration: registration 
+                        });
+                    })
+                    .then((currentToken) => {
                         if (currentToken) {
                             let miNombre = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
                             if (miNombre && grupoId) {
-                                // Guardamos la "dirección" de este móvil en la base de datos
                                 set(ref(db, `grupos/${grupoId}/tokens_push/${miNombre}`), currentToken);
                                 alert("🔔 ¡Notificaciones activadas! Ahora te avisaremos si te toca votar aunque cierres la web.");
                             }
                         }
-                                        }).catch((err) => {
+                    }).catch((err) => {
                         alert('🚨 Fallo al crear el Token: ' + err.message);
                     });
-
                 } else {
                     alert("❌ Has denegado los permisos. No te llegarán avisos.");
                 }
             });
         };
-        // =====================================================================
+
 
 
                 // ESCUCHADOR ZUMBIDOS CON NOTIFICACIÓN DEL SISTEMA
