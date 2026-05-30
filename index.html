@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podio - Piques & Votos Privados</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 font-sans select-none justify-center">
+
+    <div id="pantalla-registro-grupo" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-700/50 hidden space-y-5">
+        <div>
+            <h1 class="text-2xl font-black text-emerald-400 text-center uppercase tracking-wide mb-1">🏆 Bienvenido a Podio</h1>
+            <p class="text-xs text-slate-400 text-center">Gestiona marcadores y consultas democráticas con total privacidad.</p>
+        </div>
+        
+        <div class="space-y-3 bg-slate-900/30 border border-slate-700/40 p-4 rounded-xl">
+            <label class="block text-xs font-bold uppercase text-emerald-400 tracking-wider">✨ Crear Nueva Sala</label>
+            <input id="input-nombre-grupo" type="text" placeholder="Nombre de la sala (Ej: Pádel, Cenas...)" 
+                   class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
+            
+            <div class="flex items-center gap-2 mt-1">
+                <input type="checkbox" id="check-con-pass" onchange="document.getElementById('input-pass-grupo').classList.toggle('hidden')" class="w-4 h-4 accent-emerald-500" checked>
+                <label for="check-con-pass" class="text-[10px] font-bold text-slate-400 uppercase cursor-pointer">Proteger con contraseña</label>
+            </div>
+            <input id="input-pass-grupo" type="password" placeholder="Establecer contraseña..." 
+                   class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-all">
+            
+            <div class="space-y-1 pt-1">
+                <label class="block text-[10px] font-bold uppercase text-slate-400 tracking-wider">Tipo de Sala</label>
+                <select id="select-tipo-sala" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <option value="pique">🏆 Pique Puntos</option>
+                    <option value="votacion">🗳️ Votaciones (Con Sala de Espera)</option>
+                </select>
+            </div>
+
+            <button onclick="crearGrupo()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black py-2.5 rounded-xl text-xs transition-all active:scale-95 shadow-lg shadow-emerald-500/20 cursor-pointer mt-1">
+                🚀 Fundar Sala Privada
+            </button>
+        </div>
+
+        <div class="space-y-2 bg-slate-900/30 border border-slate-700/40 p-4 rounded-xl">
+            <label class="block text-xs font-bold uppercase text-amber-400 tracking-wider">🔑 Unirse a Sala Existente</label>
+            <input id="input-unir-nombre" type="text" placeholder="Escribe el nombre exacto de la sala..." 
+                   class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 mb-2">
+            <input id="input-unir-pass" type="password" placeholder="Contraseña (déjalo vacío si no tiene)..." 
+                   class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 mb-2">
+            <button onclick="unirseGrupo()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-2 rounded-xl text-xs transition-all active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer">
+                🚪 Validar y Entrar
+            </button>
+        </div>
+
+        <div id="seccion-historial-salas" class="border-t border-slate-700/50 pt-3 hidden space-y-2">
+            <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">📂 Tus Salas Guardadas</label>
+            <div id="lista-historial-salas" class="space-y-2 max-h-44 overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+
+    <div id="pantalla-juego" class="w-full max-w-md flex flex-col hidden">
+        <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-center">
+            <div>Sala: <strong id="display-id-grupo" class="text-amber-400 font-mono font-bold">...</strong> <span id="badge-tipo-sala" class="text-[10px] ml-1 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700"></span></div>
+            <div class="flex items-center gap-3">
+                <span>Jugando como: <strong id="mi-nombre-display" class="text-emerald-400">...</strong></span>
+                <button onclick="salirDelGrupo()" class="bg-slate-700 hover:bg-rose-500 text-slate-300 hover:text-slate-950 px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer">
+                    🚪 Salir
+                </button>
+            </div>
+        </div>
+
+        <div id="pantalla-espera" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-8 border border-amber-500/30 hidden text-center mt-6">
+            <div class="text-5xl mb-6 animate-pulse">⏳</div>
+            <h2 class="text-lg font-black text-amber-400 uppercase tracking-widest mb-3">Sala de Espera</h2>
+            <p class="text-sm text-slate-400">Estás en la puerta. El creador de la sala tiene que aprobar tu acceso para que puedas ver y participar.</p>
+        </div>
+
+        <div id="seccion-votos" class="space-y-2 mb-4 hidden">
+            <h2 class="text-xs font-bold text-amber-400 uppercase tracking-widest px-1">⚖️ Tribunal de Amigos</h2>
+            <div id="lista-votos-pendientes" class="space-y-2"></div>
+        </div>
+
+        <main id="main-juego" class="bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-700/50">
+            
+            <div class="border-b border-slate-700/50 mb-4 pb-4 space-y-3">
+                <h1 id="pique-titulo" class="text-xl font-black text-emerald-400 tracking-wide uppercase break-words text-center">
+                    Cargando...
+                </h1>
+                <div class="flex gap-2 w-full">
+                    <button onclick="cambiarTitulo()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 text-center">
+                        ✏️ Nombre
+                    </button>
+                    <button id="btn-finalizar" onclick="finalizarPique()" class="flex-1 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 py-2 rounded-xl text-xs font-black transition-all active:scale-95 text-center hidden" title="Archivar ganador y reiniciar puntos">
+                        🏆 Finalizar
+                    </button>
+                    <button id="btn-borrar" onclick="borrarSala()" class="flex-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/30 py-2 rounded-xl text-xs font-black transition-all active:scale-95 text-center hidden">
+                        🗑️ Borrar
+                    </button>
+                </div>
+            </div>
+
+            <div id="seccion-pendientes" class="mb-6 hidden space-y-2">
+                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-widest px-1">🛎️ Sala de Espera (Aprobar Entradas)</h3>
+                <div id="lista-pendientes" class="space-y-2"></div>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button onclick="copyEnlaceInvitacion()" class="flex-1 bg-slate-700/50 hover:bg-slate-700 text-slate-300 border border-slate-600/50 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                    🔗 Enlace WhatsApp
+                </button>
+                <button onclick="toggleQR()" class="flex-1 bg-slate-700/50 hover:bg-slate-700 text-slate-300 border border-slate-600/50 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                    📷 Mostrar QR
+                </button>
+            </div>
+
+            <div id="contenedor-qr" class="hidden bg-slate-900/60 border border-slate-700/50 rounded-xl p-4 flex flex-col items-center justify-center mb-4 transition-all duration-300">
+                <img id="img-qr" src="" alt="Código QR del grupo" class="w-40 h-40 bg-white p-2 rounded-lg shadow-xl">
+                <p class="text-[10px] text-slate-400 mt-2 text-center font-medium">¡Que tus amigos escaneen este QR con su cámara para entrar!</p>
+            </div>
+
+            <div id="lista-participantes" class="space-y-3 mb-6"></div>
+
+            <div id="contenedor-add-accion" class="flex flex-col gap-2 border-t border-slate-700/50 pt-4 hidden">
+                <input id="nuevo-nombre" type="text" placeholder="Añadir..." 
+                       class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500">
+                
+                <div id="fila-config-votacion" class="flex gap-2 w-full hidden">
+                    <select id="select-modo-voto-pregunta" class="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-1 py-2 text-[10px] font-bold text-slate-200 focus:outline-none cursor-pointer">
+                        <option value="publico">👁️ Pública</option>
+                        <option value="oculto">🕵️ Secreta</option>
+                    </select>
+                    <select id="select-tiempo-votacion" class="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-1 py-2 text-[10px] font-bold text-slate-200 focus:outline-none cursor-pointer">
+                        <option value="0">⏱️ Manual</option>
+                        <option value="15">⏱️ 15s</option>
+                        <option value="30">⏱️ 30s</option>
+                        <option value="60">⏱️ 1m</option>
+                    </select>
+                    <select id="select-mayoria" class="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-1 py-2 text-[10px] font-bold text-slate-200 focus:outline-none cursor-pointer">
+                        <option value="simple">⚖️ Simple</option>
+                        <option value="absoluta">🏛️ Absoluta</option>
+                        <option value="cualificada">⅔ Cualificada</option>
+                    </select>
+                </div>
+                
+                <input id="input-opciones-custom" type="text" placeholder="Opciones por coma (Vacío = SÍ, NO, ABS)" 
+                       class="w-full bg-slate-900 border border-emerald-500/50 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 hidden">
+                
+                <div class="flex gap-2 w-full mt-1">
+                    <button id="btn-add-amigo" onclick="agregarAmigo()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black py-2.5 rounded-xl text-sm transition-all active:scale-95 shadow-lg shadow-emerald-500/20 cursor-pointer">
+                        <span id="btn-add-text">+ Añadir</span>
+                    </button>
+                    <button id="btn-guardar-borrador" onclick="guardarBorrador()" title="Dejar preparada en la recámara para luego" class="bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition-all active:scale-95 border border-indigo-500/30 cursor-pointer hidden shrink-0 flex items-center justify-center">
+                        💾 Guardar
+                    </button>
+                </div>
+            </div>
+
+            <div id="seccion-borradores" class="mt-4 border-t border-slate-700/50 pt-4 hidden">
+                <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    📝 Votaciones Preparadas <span class="bg-indigo-500/20 text-[9px] px-1.5 py-0.5 rounded text-indigo-300">Solo tú</span>
+                </h3>
+                <div id="lista-borradores" class="space-y-3"></div>
+            </div>
+
+            <div id="seccion-expulsados" class="mt-4 border-t border-slate-700/50 pt-4 hidden">
+                <h3 class="text-xs font-bold text-rose-400 uppercase tracking-widest mb-3">🚫 Usuarios Rechazados</h3>
+                <div id="lista-expulsados" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div id="seccion-palmares" class="mt-6 border-t border-slate-700/50 pt-4 hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 id="titulo-historial-seccion" class="text-xs font-bold text-amber-400 uppercase tracking-widest">👑 Historial</h3>
+                    <button id="btn-descargar-acta" onclick="descargarActa()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] font-bold px-2 py-1 rounded shadow-sm transition-all hidden">
+                        📑 Generar Acta
+                    </button>
+                </div>
+                <div id="lista-palmares" class="space-y-3 max-h-64 overflow-y-auto pr-1"></div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZTeSDkC7r68FB1dJv32glfFUjOWve2Ns",
+            authDomain: "piquesapp.firebaseapp.com",
+            databaseURL: "https://piquesapp-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "piquesapp",
+            storageBucket: "piquesapp.firebasestorage.app",
+            messagingSenderId: "25556929122",
+            appId: "1:25556929122:web:7b77916a36f783354b9f3b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const paletaColoresGlobal = ['#10b981', '#f43f5e', '#eab308', '#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#84cc16'];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const grupoId = urlParams.get('grupo');
+        let estadoActualGrupo = null; 
+
+        // ESCUCHADOR ZUMBIDOS
+        if (grupoId) {
+            onValue(ref(db, `grupos/${grupoId}/zumbido`), (snapshot) => {
+                const zumbido = snapshot.val();
+                let nombreLocal = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
+                
+                if (zumbido && zumbido.para && nombreLocal) {
+                    let meTocaDirecto = zumbido.para.includes(nombreLocal);
+                    let misRepresentados = [];
+                    if (estadoActualGrupo && estadoActualGrupo.delegaciones && estadoActualGrupo.delegaciones[nombreLocal]) {
+                        misRepresentados = estadoActualGrupo.delegaciones[nombreLocal].split(',').map(s => s.trim());
+                    }
+                    let meTocaPorDelegado = misRepresentados.some(d => zumbido.para.includes(d));
+
+                    if (meTocaDirecto || meTocaPorDelegado) {
+                        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+                        console.log("⚠️ ¡Aviso recibido (Directo o Delegado)!");
+                    }
+                }
+            });
+        }
+
+        window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
+            const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
+            if (despistados.length === 0) return;
+            set(ref(db, `grupos/${grupoId}/zumbido`), { para: despistados, timestamp: Date.now() }).then(() => {
+                alert(`📢 ¡Zumbido enviado al bolsillo de: ${despistados.join(', ')}!`);
+                setTimeout(() => set(ref(db, `grupos/${grupoId}/zumbido`), null), 2000);
+            });
+        };
+
+        // HISTORIAL DE GRUPOS LOCAL
+        window.pintarHistorialSalas = function() {
+            const seccionHistorial = document.getElementById('seccion-historial-salas');
+            const listaHistorial = document.getElementById('lista-historial-salas');
+            if (!seccionHistorial || !listaHistorial) return;
+
+            const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+            const entradasSalas = Object.entries(salasGuardadas);
+
+            if (entradasSalas.length > 0) {
+                seccionHistorial.classList.remove('hidden');
+                listaHistorial.innerHTML = '';
+                entradasSalas.forEach(([id, salaInfo]) => {
+                    let tituloSala = typeof salaInfo === 'object' ? salaInfo.titulo : salaInfo;
+                    let esCreadorDeSala = typeof salaInfo === 'object' ? salaInfo.soyCreador : false;
+
+                    let botonAccionHistorial = esCreadorDeSala
+                        ? `<button onclick="destruirSalaDesdeHistorial('${id}')" class="text-rose-400 hover:text-rose-600 p-1 font-bold text-xs cursor-pointer shadow">🗑️</button>`
+                        : `<button onclick="eliminarDeHistorialLocal('${id}')" class="text-slate-400 hover:text-rose-400 p-1 font-bold text-xs cursor-pointer shadow">❌</button>`;
+
+                    listaHistorial.innerHTML += `
+                        <div class="flex gap-2 items-center w-full bg-slate-700/40 border border-slate-600/30 rounded-xl p-1 pr-3 hover:bg-slate-700/80 transition-all">
+                            <button onclick="window.location.search='?grupo=${id}'" class="flex-1 text-left p-2.5 text-xs font-bold truncate text-slate-200 cursor-pointer">
+                                <span>📂 ${tituloSala}</span>
+                            </button>
+                            <span class="text-[10px] font-mono text-amber-400 font-black uppercase bg-slate-900/40 px-2 py-0.5 rounded border border-amber-500/10 shrink-0">${id}</span>
+                            ${botonAccionHistorial}
+                        </div>
+                    `;
+                });
+            } else { seccionHistorial.classList.add('hidden'); }
+        };
+
+        window.eliminarDeHistorialLocal = function(id) {
+            if (!confirm(`¿Quieres salir del grupo "${id.toUpperCase()}" definitivamente?`)) return;
+            const nombreUsuario = localStorage.getItem(`pique_nombre_usuario_${id}`);
+            if (nombreUsuario) {
+                set(ref(db, `grupos/${id}/participantes/${nombreUsuario}`), null);
+                set(ref(db, `grupos/${id}/pendientes/${nombreUsuario}`), null);
+                localStorage.removeItem(`pique_nombre_usuario_${id}`);
+            }
+            const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+            delete salasGuardadas[id];
+            localStorage.setItem('podio_historial_salas', JSON.stringify(salasGuardadas));
+            window.pintarHistorialSalas();
+        };
+
+        window.destruirSalaDesdeHistorial = function(id) {
+            if (!confirm(`🚨 ¿Seguro que deseas ELIMINAR COMPLETAMENTE la sala "${id.toUpperCase()}" de la nube?`)) return;
+            set(ref(db, `grupos/${id}`), null).then(() => {
+                const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+                delete salasGuardadas[id];
+                localStorage.setItem('podio_historial_salas', JSON.stringify(salasGuardadas));
+                localStorage.removeItem(`pique_nombre_usuario_${id}`);
+                window.pintarHistorialSalas();
+            });
+        };
+
+        window.mostrarDetalleVotos = function(votosEscaped, tituloConsulta) {
+            const votos = JSON.parse(decodeURIComponent(votosEscaped));
+            let mensaje = `📊 AUDITORÍA DE RESPUESTAS INDIVIDUALES\n"${tituloConsulta}"\n\n`;
+            if (Object.keys(votos).length === 0) {
+                mensaje += `Nadie participó en esta votación. 👻\n`;
+            } else {
+                Object.entries(votos).forEach(([nombre, voto]) => {
+                    mensaje += `👤 ${nombre}: ${voto}\n`;
+                });
+            }
+            alert(mensaje);
+        };
+
+        window.gestionarPendiente = function(nombrePendiente, aprobado) {
+            const updates = {};
+            updates[`/pendientes/${nombrePendiente}`] = null;
+            if (aprobado) {
+                updates[`/participantes/${nombrePendiente}`] = 0;
+            } else {
+                updates[`/expulsados/${nombrePendiente.toLowerCase().trim()}`] = true;
+            }
+            update(ref(db, `grupos/${grupoId}`), updates);
+        };
+
+        // INICIALIZACIÓN PRINCIPAL
+        if (!grupoId) {
+            document.getElementById('pantalla-registro-grupo').classList.remove('hidden');
+            window.pintarHistorialSalas();
+        } else {
+            document.getElementById('pantalla-juego').classList.remove('hidden');
+            document.getElementById('display-id-grupo').innerText = grupoId.toUpperCase();
+            const grupoRef = ref(db, `grupos/${grupoId}`);
+
+            let miNombre = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
+            let esNuevoRegistro = false; 
+            
+            if (!miNombre || miNombre.trim() === "") {
+                miNombre = prompt(`¡Te has unido a la sala [${grupoId.toUpperCase()}]!\n¿Cuál es tu nombre?`, "");
+                if (!miNombre || miNombre.trim() === "") {
+                    miNombre = "Anónimo_" + Math.floor(Math.random() * 1000);
+                }
+                localStorage.setItem(`pique_nombre_usuario_${grupoId}`, miNombre.trim());
+                esNuevoRegistro = true; 
+            }
+            
+            const miNombreDisplayEl = document.getElementById('mi-nombre-display');
+            if (miNombreDisplayEl) miNombreDisplayEl.innerText = miNombre;
+
+            onValue(grupoRef, (snapshot) => {
+                const data = snapshot.val();
+                
+                if (!data) {
+                    const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+                    if (salasGuardadas[grupoId]) {
+                        alert("🚨 Esta sala ha sido eliminada de forma definitiva por el administrador.");
+                        delete salasGuardadas[grupoId];
+                        localStorage.setItem('podio_historial_salas', JSON.stringify(salasGuardadas));
+                        localStorage.removeItem(`pique_nombre_usuario_${grupoId}`);
+                        window.location.search = "";
+                    } else {
+                        set(grupoRef, { titulo: "Pique de Inauguración 🚀", tipo: "pique", participantes: {}, password: "123", creador: miNombre });
+                    }
+                    return;
+                }
+                
+                estadoActualGrupo = data; 
+                const tipoSala = data.tipo || 'pique'; 
+
+                const badge = document.getElementById('badge-tipo-sala');
+                const titleHistorialSeccion = document.getElementById('titulo-historial-seccion');
+                
+                if (badge) {
+                    if (tipoSala === 'votacion') {
+                        badge.innerText = `🗳️ Sala Votaciones`;
+                        badge.className = "text-[10px] ml-1 bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30 font-bold";
+                        if (titleHistorialSeccion) titleHistorialSeccion.innerText = "📂 Historial de Consultas";
+                    } else {
+                        badge.innerText = "🏆 Pique Puntos";
+                        badge.className = "text-[10px] ml-1 bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold";
+                        if (titleHistorialSeccion) titleHistorialSeccion.innerText = "👑 Salón de la Fama";
+                    }
+                }
+
+                if (!data.creador) { update(grupoRef, { creador: miNombre }); return; }
+
+                const soyElCreadorOficial = data.creador.toLowerCase().trim() === miNombre.toLowerCase().trim();
+                const participantes = data.participantes || {};
+                const pendientes = data.pendientes || {};
+                const expulsados = data.expulsados || {};
+
+                const nombresOcupados = [...Object.keys(participantes), ...Object.keys(pendientes), ...Object.keys(expulsados)].map(n => n.toLowerCase());
+                
+                if (esNuevoRegistro && nombresOcupados.includes(miNombre.toLowerCase())) {
+                    alert(`⚠️ El nombre "${miNombre}" ya está cogido.\nPor favor, elige otro.`);
+                    localStorage.removeItem(`pique_nombre_usuario_${grupoId}`);
+                    window.location.reload(); 
+                    return;
+                }
+                esNuevoRegistro = false; 
+
+                if (expulsados[miNombre.toLowerCase().trim()]) {
+                    alert("❌ Has sido rechazado de este grupo.");
+                    const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+                    delete salasGuardadas[grupoId];
+                    localStorage.setItem('podio_historial_salas', JSON.stringify(salasGuardadas));
+                    localStorage.removeItem(`pique_nombre_usuario_${grupoId}`);
+                    window.location.search = "";
+                    return;
+                }
+
+                const estaEnParticipantes = participantes[miNombre] !== undefined;
+                const estaEnPendientes = pendientes[miNombre] !== undefined;
+
+                if (!estaEnParticipantes && !estaEnPendientes) {
+                    if (soyElCreadorOficial) {
+                        update(grupoRef, { [`/participantes/${miNombre}`]: 0 });
+                    } else if (data.password && data.password !== "") {
+                        update(grupoRef, { [`/pendientes/${miNombre}`]: true });
+                    } else {
+                        update(grupoRef, { [`/participantes/${miNombre}`]: 0 });
+                    }
+                    return; 
+                }
+
+                if (estaEnPendientes && !soyElCreadorOficial) {
+                    document.getElementById('pantalla-espera').classList.remove('hidden');
+                    document.getElementById('main-juego').classList.add('hidden');
+                    const tv = document.getElementById('seccion-votos');
+                    if(tv) tv.classList.add('hidden');
+                    return; 
+                } else {
+                    document.getElementById('pantalla-espera').classList.add('hidden');
+                    document.getElementById('main-juego').classList.remove('hidden');
+                }
+
+                const listaPendientesDiv = document.getElementById('lista-pendientes');
+                const seccionPendientes = document.getElementById('seccion-pendientes');
+                if (listaPendientesDiv) listaPendientesDiv.innerHTML = '';
+
+                if (soyElCreadorOficial && Object.keys(pendientes).length > 0) {
+                    if (seccionPendientes) seccionPendientes.classList.remove('hidden');
+                    Object.keys(pendientes).forEach(nombrePend => {
+                        listaPendientesDiv.innerHTML += `
+                            <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2 px-3 flex justify-between items-center text-xs shadow-md">
+                                <span class="text-amber-400 font-bold">⏳ ${nombrePend} quiere entrar</span>
+                                <div class="flex gap-2">
+                                    <button onclick="gestionarPendiente('${nombrePend}', true)" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 px-3 py-1 rounded-lg font-black transition-all cursor-pointer">Aprobar</button>
+                                    <button onclick="gestionarPendiente('${nombrePend}', false)" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/30 px-3 py-1 rounded-lg font-black transition-all cursor-pointer">Rechazar</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else { if (seccionPendientes) seccionPendientes.classList.add('hidden'); }
+
+                const btnFinalizar = document.getElementById('btn-finalizar');
+                const btnBorrar = document.getElementById('btn-borrar');
+                const btnActa = document.getElementById('btn-descargar-acta');
+                
+                if (soyElCreadorOficial) {
+                    if (btnBorrar) btnBorrar.classList.remove('hidden');
+                    if (btnActa && tipoSala === 'votacion') btnActa.classList.remove('hidden');
+                    if (btnFinalizar) {
+                        if (tipoSala === 'pique') btnFinalizar.classList.remove('hidden');
+                        else btnFinalizar.classList.add('hidden');
+                    }
+                } else {
+                    if (btnFinalizar) btnFinalizar.classList.add('hidden');
+                    if (btnBorrar) btnBorrar.classList.add('hidden');
+                    if (btnActa) btnActa.classList.add('hidden');
+                }
+
+                const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+                salasGuardadas[grupoId] = { titulo: data.titulo, soyCreador: soyElCreadorOficial };
+                localStorage.setItem('podio_historial_salas', JSON.stringify(salasGuardadas));
+
+                const piqueTituloEl = document.getElementById('pique-titulo');
+                if (piqueTituloEl) piqueTituloEl.innerText = data.titulo;
+                
+                const numTotalAmigos = Object.keys(participantes).length;
+                const votantesPosiblesBase = numTotalAmigos > 1 ? numTotalAmigos - 1 : 1;
+
+                const listaDiv = document.getElementById('lista-participantes');
+                if (!listaDiv) return;
+                listaDiv.innerHTML = ''; 
+
+                const contenedorAddAccion = document.getElementById('contenedor-add-accion');
+                const inputNuevoNombre = document.getElementById('nuevo-nombre');
+                const filaConfigVotacion = document.getElementById('fila-config-votacion');
+                const selectModoVotoPregunta = document.getElementById('select-modo-voto-pregunta');
+                const selectTiempoVotacion = document.getElementById('select-tiempo-votacion');
+                const selectMayoria = document.getElementById('select-mayoria');
+                const inputOpcionesCustom = document.getElementById('input-opciones-custom');
+                const btnAddText = document.getElementById('btn-add-text');
+
+                const listaNegra = Object.keys(expulsados);
+
+                // ================= MODO A: SALA DE VOTACIONES =================
+                if (tipoSala === 'votacion') {
+                    const seccionVotosEl = document.getElementById('seccion-votos');
+                    if (seccionVotosEl) seccionVotosEl.classList.add('hidden'); 
+                    
+                    if (soyElCreadorOficial) {
+                        if (contenedorAddAccion) contenedorAddAccion.classList.remove('hidden');
+                        if (inputNuevoNombre) inputNuevoNombre.placeholder = "Escribe tu pregunta...";
+                        if (filaConfigVotacion) filaConfigVotacion.classList.remove('hidden');
+                        if (inputOpcionesCustom) inputOpcionesCustom.classList.remove('hidden');
+                        if (btnAddText) btnAddText.innerText = "🚀 Lanzar Votación";
+                        
+                        const btnGuardarBor = document.getElementById('btn-guardar-borrador');
+                        if (btnGuardarBor) btnGuardarBor.classList.remove('hidden');
+
+                        const borradores = data.borradores || {};
+                        const listaBorradoresDiv = document.getElementById('lista-borradores');
+                        const seccionBorradores = document.getElementById('seccion-borradores');
+                        if (listaBorradoresDiv) listaBorradoresDiv.innerHTML = '';
+                        
+                        if (Object.keys(borradores).length > 0) {
+                            if (seccionBorradores) seccionBorradores.classList.remove('hidden');
+                            Object.entries(borradores).forEach(([idBor, b]) => {
+                                let opsText = b.opciones && b.opciones.length > 0 ? b.opciones.join(', ') : 'SÍ, NO, ABS';
+                                let modoText = b.modoVoto === 'publico' ? '👁️ Pública' : '🕵️ Oculta';
+                                let tiempoText = b.duracion > 0 ? `⏱️ ${b.duracion}s` : '⏱️ Manual';
+                                let mayText = b.tipoMayoria === 'absoluta' ? '🏛️ May. Absoluta' : b.tipoMayoria === 'cualificada' ? '⅔ May. Cualificada' : '⚖️ May. Simple';
+                                
+                                listaBorradoresDiv.innerHTML += `
+                                    <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-3 shadow-md flex flex-col gap-2">
+                                        <span class="font-black text-sm text-slate-200">❓ ${b.para}</span>
+                                        <div class="text-[10px] text-slate-400 font-mono bg-slate-900/60 p-2 rounded-lg border border-slate-700/50">
+                                            <div><strong class="text-indigo-400">Opciones:</strong> ${opsText}</div>
+                                            <div class="mt-1"><strong>Config:</strong> ${modoText} | ${tiempoText} | ${mayText}</div>
+                                        </div>
+                                        <div class="flex gap-2 w-full pt-1">
+                                            <button onclick="lanzarDesdeBorrador('${idBor}')" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-slate-950 px-3 py-2 rounded-lg font-black text-xs transition-all cursor-pointer shadow-sm">🚀 Lanzar Ahora</button>
+                                            <button onclick="borrarBorrador('${idBor}')" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/30 px-4 py-2 rounded-lg font-black text-xs transition-all cursor-pointer" title="Borrar">🗑️</button>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            if (seccionBorradores) seccionBorradores.classList.add('hidden');
+                        }
+
+                    } else {
+                        if (contenedorAddAccion) contenedorAddAccion.classList.add('hidden'); 
+                        if (document.getElementById('seccion-borradores')) document.getElementById('seccion-borradores').classList.add('hidden');
+                    }
+
+                    // RENDERING PRESENTES CON DELEGAR
+                    let htmlPresentes = '';
+                    const delegaciones = data.delegaciones || {};
+                    
+                    Object.keys(participantes).forEach(nombre => {
+                        let btnEchar = (soyElCreadorOficial && nombre.toLowerCase().trim() !== miNombre.toLowerCase().trim())
+                            ? `<button onclick="solicitarExpulsion('${nombre}')" class="ml-1 text-rose-500 hover:text-rose-400 font-black cursor-pointer" title="Expulsar">✕</button>`
+                            : '';
+                            
+                        let btnDelegar = soyElCreadorOficial
+                            ? `<button onclick="delegarVoto('${nombre}')" class="ml-1.5 text-indigo-400 hover:text-indigo-300 font-black cursor-pointer" title="Añadir delegados a esta persona">🤝</button>`
+                            : '';
+                            
+                        let textoDelegado = delegaciones[nombre] ? `<span class="text-[9px] text-indigo-300 ml-1 italic font-medium">(Rep: ${delegaciones[nombre]})</span>` : '';
+
+                        htmlPresentes += `<span class="inline-block bg-slate-800 border border-slate-600 px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 text-slate-200 font-medium shadow-sm">${nombre}${textoDelegado}${btnDelegar}${btnEchar}</span>`;
+                    });
+                    
+                    listaDiv.innerHTML = `
+                        <div class="bg-slate-900/40 border border-slate-700/30 p-3 rounded-xl text-xs text-slate-400 mb-4">
+                            <div class="mb-2">👥 <strong>Presentes en sala (Censo Oficial):</strong></div>
+                            <div class="flex flex-wrap">${htmlPresentes}</div>
+                        </div>
+                    `;
+
+                    const peticiones = data.peticiones || {};
+                    const listaPolls = Object.entries(peticiones);
+
+                    if (listaPolls.length > 0) {
+                        listaPolls.forEach(([id, peticion]) => {
+                            if (peticion.tipo !== "POLL") return;
+                            const votos = peticion.votos || {};
+                            const modoVotoPregunta = peticion.modoVoto || 'publico';
+                            const opciones = peticion.opciones || ['SÍ', 'NO', 'ABS'];
+                            const tipoMayoria = peticion.tipoMayoria || 'simple';
+
+                            // ETIQUETAS DE CONFIGURACIÓN
+                            let tagPrivacidadInfo = modoVotoPregunta === 'publico' 
+                                ? '<span class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1 mr-1">👁️ Pública</span>' 
+                                : '<span class="text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1 mr-1">🕵️ Secreta</span>';
+                            
+                            let tagMayoria = '';
+                            if (tipoMayoria === 'absoluta') tagMayoria = '<span class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1">🏛️ Absoluta</span>';
+                            else if (tipoMayoria === 'cualificada') tagMayoria = '<span class="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1">⅔ Cualificada</span>';
+
+                            // TEMPORIZADOR
+                            let htmlTimer = '';
+                            if (peticion.duracion > 0) {
+                                let tiempoPasado = Math.floor((Date.now() - peticion.timestampInicio) / 1000);
+                                let tiempoRestante = Math.max(0, peticion.duracion - tiempoPasado);
+                                let porcentajeTiempo = Math.max(0, (tiempoRestante / peticion.duracion) * 100);
+
+                                htmlTimer = `
+                                    <div class="mb-3 bg-slate-900/60 rounded-xl border border-slate-800 relative overflow-hidden shadow-inner mt-1">
+                                        <div class="p-2.5 flex items-center justify-between text-xs relative z-10">
+                                            <span class="text-slate-400 font-medium tracking-wide">⏱️ Tiempo restante:</span>
+                                            <span id="timer-${id}" class="font-black text-sm ${tiempoRestante <= 5 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}">${tiempoRestante}s</span>
+                                        </div>
+                                        <div class="h-1 w-full bg-slate-800 absolute bottom-0 left-0">
+                                            <div id="bar-${id}" class="h-full ${tiempoRestante <= 5 ? 'bg-rose-500' : 'bg-indigo-500'} transition-all ease-linear" style="width: ${porcentajeTiempo}%; transition-duration: 1000ms;"></div>
+                                        </div>
+                                    </div>
+                                `;
+
+                                if (!window.intervalsVotaciones) window.intervalsVotaciones = {};
+                                if (window.intervalsVotaciones[id]) clearInterval(window.intervalsVotaciones[id]);
+                                
+                                window.intervalsVotaciones[id] = setInterval(() => {
+                                    let tPasado = Math.floor((Date.now() - peticion.timestampInicio) / 1000);
+                                    let tRestante = Math.max(0, peticion.duracion - tPasado);
+                                    let pTiempo = Math.max(0, (tRestante / peticion.duracion) * 100);
+                                    
+                                    let timerEl = document.getElementById(`timer-${id}`);
+                                    let barEl = document.getElementById(`bar-${id}`);
+                                    
+                                    if (timerEl) {
+                                        timerEl.innerText = tRestante + 's';
+                                        if (tRestante <= 5) timerEl.className = 'font-black text-sm text-rose-500 animate-pulse';
+                                    }
+                                    if (barEl) {
+                                        barEl.style.width = pTiempo + '%';
+                                        if (tRestante <= 5) barEl.className = 'h-full bg-rose-500 transition-all ease-linear';
+                                    }
+                                    
+                                    if (tRestante <= 0) {
+                                        clearInterval(window.intervalsVotaciones[id]);
+                                        if (soyElCreadorOficial) cerrarVotacionManualmente(id, peticion.para);
+                                    }
+                                }, 1000);
+                            }
+
+                            // FALTANTES Y DELEGADOS
+                            let listaTodosEsperados = [];
+                            Object.keys(participantes).forEach(p => {
+                                listaTodosEsperados.push(p);
+                                if (delegaciones[p]) {
+                                    let delegados = delegaciones[p].split(',').map(s => s.trim()).filter(s => s !== "");
+                                    listaTodosEsperados.push(...delegados);
+                                }
+                            });
+                            
+                            const listaQuienesYaVotaron = Object.keys(votos);
+                            const listaQuienesFaltan = listaTodosEsperados.filter(p => !listaQuienesYaVotaron.includes(p));
+                            let totalVotos = Object.keys(votos).length;
+
+                            let gradientParts = [];
+                            let currentP = 0;
+                            let desgloseResultadosHtml = '<div class="text-[10px] text-slate-400 border-t border-slate-700/40 mt-4 pt-3 space-y-1.5 font-medium">';
+
+                            opciones.forEach((op, index) => {
+                                let conteo = Object.values(votos).filter(v => v === op).length;
+                                let porcentaje = totalVotos > 0 ? Math.round((conteo / totalVotos) * 100) : 0;
+                                let color = index < paletaColoresGlobal.length ? paletaColoresGlobal[index] : '#94a3b8';
+                                
+                                if (porcentaje > 0 || totalVotos === 0) {
+                                    let limite = totalVotos === 0 ? (index + 1) * (100 / opciones.length) : currentP + porcentaje;
+                                    gradientParts.push(`${color} ${currentP}% ${limite}%`);
+                                    currentP = limite;
+                                }
+
+                                let quienesVotaron = Object.entries(votos).filter(([k,v]) => v === op).map(([k]) => k).join(', ');
+                                desgloseResultadosHtml += `<div><strong style="color:${color}">● ${op}:</strong> <span class="text-slate-300">${quienesVotaron || '-'}</span></div>`;
+                            });
+                            desgloseResultadosHtml += `</div>`;
+
+                            // BOTONES
+                            let misRepresentados = [];
+                            if (delegaciones[miNombre]) {
+                                misRepresentados = delegaciones[miNombre].split(',').map(s => s.trim()).filter(s => s !== "");
+                            }
+                            const usuariosAVotar = [miNombre, ...misRepresentados];
+                            let htmlTodasLasBotoneras = '';
+
+                            usuariosAVotar.forEach(usuarioVotante => {
+                                let miVotoGuardadoMultiple = votos[usuarioVotante];
+                                let htmlBotones = '';
+                                
+                                opciones.forEach((op, index) => {
+                                    let color = index < paletaColoresGlobal.length ? paletaColoresGlobal[index] : '#94a3b8';
+                                    let isSelected = miVotoGuardadoMultiple === op;
+                                    let estiloActivo = isSelected 
+                                        ? `background-color: ${color}20; border-color: ${color}; color: ${color}; box-shadow: 0 0 10px ${color}50; transform: scale(1.02);` 
+                                        : `border-color: #334155; color: #cbd5e1;`;
+
+                                    htmlBotones += `
+                                        <button onclick="votarPoll('${id}', '${op.replace(/'/g, "\\'")}', '${usuarioVotante}')" 
+                                                class="flex-1 min-w-[30%] py-3 px-1 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center font-black border-2 break-words shadow-sm"
+                                                style="${estiloActivo}">
+                                            <span class="text-xs text-center leading-tight uppercase px-1">${op}</span>
+                                        </button>
+                                    `;
+                                });
+
+                                let tituloBotonera = usuarioVotante === miNombre 
+                                    ? `<div class="text-xs font-bold text-slate-300 mb-2 mt-4 bg-slate-800/80 w-full text-center py-1.5 rounded-lg border border-slate-600/50 shadow-sm uppercase tracking-wider">👤 Tu voto (${miNombre})</div>`
+                                    : `<div class="text-xs font-bold text-indigo-200 mb-2 mt-4 bg-indigo-900/60 w-full text-center py-1.5 rounded-lg border border-indigo-500/50 shadow-sm uppercase tracking-wider">🤝 Voto de ${usuarioVotante}</div>`;
+
+                                htmlTodasLasBotoneras += `
+                                    <div class="flex flex-col w-full mb-1">
+                                        ${tituloBotonera}
+                                        <div class="flex flex-wrap justify-center gap-2 w-full">
+                                            ${htmlBotones}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            let fondoGradient = `conic-gradient(${gradientParts.join(', ')})`;
+                            if (totalVotos === 0 && opciones.length === 0) fondoGradient = '#1e293b'; 
+
+                            let donutVisual = `
+                                <div class="flex flex-col items-center my-4 opacity-90">
+                                    <div class="relative w-24 h-24 rounded-full flex items-center justify-center" style="background: ${fondoGradient};">
+                                        <div class="absolute w-18 h-18 bg-slate-800 rounded-full flex flex-col items-center justify-center text-[10px] shadow-inner">
+                                            <span class="font-black text-slate-100 text-lg">${totalVotos}</span>
+                                            <span class="text-slate-400 uppercase tracking-widest text-[8px]">Votos</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                            let bloqueVisualVotos = '';
+                            let desgloseParaMostrar = '';
+
+                            if (modoVotoPregunta === 'publico') {
+                                bloqueVisualVotos = donutVisual;
+                                desgloseParaMostrar = desgloseResultadosHtml;
+                            } else {
+                                if (soyElCreadorOficial) {
+                                    bloqueVisualVotos = donutVisual + `<span class="text-[9px] text-slate-500 italic mt-1 text-center block">👁️ Solo tú ves el progreso (Creador)</span>`;
+                                } else {
+                                    bloqueVisualVotos = `
+                                        <div class="flex flex-col items-center my-5 p-3 bg-slate-900/40 rounded-xl border border-slate-800/60">
+                                            <span class="text-2xl mb-1">🕵️🔒</span>
+                                            <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400">Voto Top Secret activo</span>
+                                            <span class="text-[9px] text-slate-500 mt-0.5">El resultado se revelará al cerrar</span>
+                                        </div>
+                                    `;
+                                }
+                            }
+
+                            let btnCampanaDespertar = '';
+                            let bloqueQuienesFaltanInfo = '';
+                            
+                            if (soyElCreadorOficial) {
+                                const jsonFaltan = encodeURIComponent(JSON.stringify(listaQuienesFaltan));
+                                if (listaQuienesFaltan.length > 0) {
+                                    btnCampanaDespertar = `<button onclick="enviarZumbidoAAmigos('${jsonFaltan}')" class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-lg font-bold hover:bg-amber-500 hover:text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-sm">🔔 Dar Toque (${listaQuienesFaltan.length})</button>`;
+                                    bloqueQuienesFaltanInfo = `<div class="text-[10px] bg-slate-900/50 p-2 rounded-lg border border-slate-800 text-slate-400 mt-2">⏳ <strong>Faltan por votar:</strong> <span class="text-amber-400">${listaQuienesFaltan.join(', ')}</span></div>`;
+                                } else {
+                                    bloqueQuienesFaltanInfo = `<div class="text-[10px] bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20 text-emerald-400 mt-2">✅ ¡Todos los presentes han votado!</div>`;
+                                }
+                            }
+
+                            let btnCerrarAdmin = soyElCreadorOficial 
+                                ? `<div class="flex flex-wrap justify-end gap-1.5">${btnCampanaDespertar}<button onclick="cerrarVotacionManualmente('${id}', '${peticion.para.replace(/'/g, "\\'")}')" class="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded hover:bg-purple-500 hover:text-slate-950 font-bold transition-all cursor-pointer whitespace-nowrap shadow-sm">🔒 Cerrar</button></div>`
+                                : '';
+
+                            listaDiv.innerHTML += `
+                                <div class="bg-slate-700/30 border border-slate-700 p-4 rounded-xl flex flex-col justify-between shadow-md mb-3">
+                                    <div class="flex justify-between items-start gap-3">
+                                        <div class="flex flex-col gap-1 flex-1">
+                                            <span class="font-black text-sm text-slate-100 break-words">❓ ${peticion.para}</span>
+                                            <div>${tagPrivacidadInfo}${tagMayoria}</div>
+                                        </div>
+                                        ${btnCerrarAdmin}
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 font-medium mt-1 mb-2 border-b border-slate-700/50 pb-2">Propuesto por: ${peticion.solicitado_por}</div>
+                                    ${htmlTimer}
+                                    ${bloqueVisualVotos}
+                                    ${bloqueQuienesFaltanInfo}
+                                    
+                                    <div class="flex flex-col w-full mt-2">
+                                        ${htmlTodasLasBotoneras}
+                                    </div>
+
+                                    ${desgloseParaMostrar}
+                                </div>
+                            `;
+                        });
+                    } else {
+                        listaDiv.innerHTML += `<div class="text-xs text-slate-400 text-center py-8 italic">No hay votaciones activas en este momento.</div>`;
+                    }
+
+                // ================= MODO B: PIQUE POR PUNTOS =================
+                } else {
+                    if (contenedorAddAccion) contenedorAddAccion.classList.remove('hidden'); 
+                    if (inputNuevoNombre) inputNuevoNombre.placeholder = "Añadir a otro amigo...";
+                    if (filaConfigVotacion) filaConfigVotacion.classList.add('hidden');
+                    if (inputOpcionesCustom) inputOpcionesCustom.classList.add('hidden');
+                    if (btnAddText) btnAddText.innerText = "+ Añadir";
+                    
+                    if (document.getElementById('btn-guardar-borrador')) document.getElementById('btn-guardar-borrador').classList.add('hidden');
+                    if (document.getElementById('seccion-borradores')) document.getElementById('seccion-borradores').classList.add('hidden');
+
+                    const ordenados = Object.entries(participantes).sort((a, b) => b[1] - a[1]);
+                    ordenados.forEach(([nombre, puntos], index) => {
+                        let medalla = index === 0 ? "👑 " : index === 1 ? "🥈 " : index === 2 ? "🥉 " : "🎯 ";
+                        let bgClass = index === 0 ? "bg-slate-700/80 border-2 border-emerald-400/50" : "bg-slate-700/30 border border-slate-700";
+                        let btnEchar = (soyElCreadorOficial && nombre.toLowerCase().trim() !== miNombre.toLowerCase().trim())
+                            ? `<button onclick="solicitarExpulsion('${nombre}')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 px-2 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-90 ml-1 cursor-pointer">❌ Echar</button>`
+                            : '';
+
+                        listaDiv.innerHTML += `
+                            <div class="flex items-center justify-between p-3.5 rounded-xl ${bgClass}">
+                                <div class="flex items-center gap-1 truncate max-w-[60%]"><span class="font-bold flex items-center gap-2 truncate">${medalla}${nombre}</span>${btnEchar}</div>
+                                <div class="flex items-center gap-3 shrink-0">
+                                    <span class="font-black text-xl text-emerald-400">${puntos}</span>
+                                    <button onclick="solicitarPunto('${nombre}', ${puntos})" class="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 border border-emerald-500/20 w-10 h-10 rounded-xl font-black flex items-center justify-center text-xl active:scale-90 cursor-pointer">+</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    const peticiones = data.peticiones || {};
+                    const listaVotosDiv = document.getElementById('lista-votos-pendientes');
+                    const seccionVotos = document.getElementById('seccion-votos');
+                    if (listaVotosDiv) listaVotosDiv.innerHTML = '';
+                    const listaPeticiones = Object.entries(peticiones);
+
+                    if (listaPeticiones.length > 0) {
+                        if (seccionVotos) seccionVotos.classList.remove('hidden');
+                        listaPeticiones.forEach(([id, peticion]) => {
+                            if (peticion.tipo === "POLL") return; 
+                            let bloqueBotones = '';
+                            const esParaMi = peticion.para.toLowerCase().trim() === miNombre.toLowerCase().trim();
+                            const votos = peticion.votos || {};
+                            const conteoSi = Object.values(votos).filter(v => v === "SI").length;
+                            const conteoNo = Object.values(votos).filter(v => v === "NO").length;
+                            const conteoAbs = Object.values(votos).filter(v => v === "ABS").length;
+                            const miVotoGuardado = votos[miNombre];
+                            const votantesEfectivos = Math.max(1, votantesPosiblesBase - conteoAbs);
+                            const vPasarDeEsta = Math.floor(votantesEfectivos / 2) + 1;
+
+                            if (esParaMi) {
+                                let textoTu = peticion.tipo === "EXPULSION" ? "Tu expulsión" : "Tu punto";
+                                bloqueBotones = `<span class="text-xs text-red-400/90 font-semibold italic">${textoTu} (${conteoSi}/${vPasarDeEsta} 👍)</span>`;
+                            } else if (miVotoGuardado) {
+                                let textoVoto = miVotoGuardado === 'SI' ? 'SÍ 👍' : miVotoGuardado === 'NO' ? 'NO ❌' : 'AUSENTE 🤷‍♂️';
+                                let colorVoto = miVotoGuardado === 'SI' ? 'text-emerald-400' : miVotoGuardado === 'NO' ? 'text-rose-400' : 'text-slate-400';
+                                bloqueBotones = `<span class="text-xs text-slate-400 font-medium"><strong class="${colorVoto}">${textoVoto}</strong></span>`;
+                            } else {
+                                const votosString = encodeURIComponent(JSON.stringify(votos));
+                                bloqueBotones = `
+                                    <div class="flex gap-1">
+                                        <button onclick="votarTribunal('${id}', 'SI', '${peticion.para}', ${peticion.puntos_actuales || 0}, '${votosString}', ${votantesPosiblesBase}, '${peticion.tipo || "PUNTO"}')" class="bg-emerald-500 text-slate-950 font-bold px-2 py-1 rounded-lg text-xs cursor-pointer">Sí</button>
+                                        <button onclick="votarTribunal('${id}', 'NO', '${peticion.para}', ${peticion.puntos_actuales || 0}, '${votosString}', ${votantesPosiblesBase}, '${peticion.tipo || "PUNTO"}')" class="bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold px-2 py-1 rounded-lg text-xs cursor-pointer">No</button>
+                                        <button onclick="votarTribunal('${id}', 'ABS', '${peticion.para}', ${peticion.puntos_actuales || 0}, '${votosString}', ${votantesPosiblesBase}, '${peticion.tipo || "PUNTO"}')" class="bg-slate-700 text-slate-300 font-bold px-1 py-1 rounded-lg text-xs cursor-pointer">🤷‍♂️</button>
+                                    </div>
+                                `;
+                            }
+
+                            let textoPregunta = peticion.tipo === "EXPULSION" ? `¿Expulsar a <span class="font-black text-rose-400">${peticion.para}</span>?` : `¿Punto para <span class="font-black text-amber-400">${peticion.para}</span>?`;
+                            if (listaVotosDiv) {
+                                listaVotosDiv.innerHTML += `
+                                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between shadow-lg">
+                                        <div class="text-xs flex-1 mr-2">${textoPregunta}<span class="block text-[10px] text-slate-400">Pedido por: ${peticion.solicitado_por} (${conteoSi}/${vPasarDeEsta} 👍)</span></div>
+                                        <div class="shrink-0">${bloqueBotones}</div>
+                                    </div>
+                                `;
+                            }
+                        });
+                    } else { if (seccionVotos) seccionVotos.classList.add('hidden'); }
+                }
+
+                // RENDERING COMPARTIDO: Lista de expulsados
+                const seccionExpulsados = document.getElementById('seccion-expulsados');
+                const listaExpulsadosDiv = document.getElementById('lista-expulsados');
+                if (listaExpulsadosDiv) listaExpulsadosDiv.innerHTML = '';
+                if (soyElCreadorOficial && listaNegra.length > 0) {
+                    if (seccionExpulsados) seccionExpulsados.classList.remove('hidden');
+                    listaNegra.forEach(nombreExp => {
+                        if (listaExpulsadosDiv) {
+                            listaExpulsadosDiv.innerHTML += `
+                                <div class="bg-slate-900/40 border border-slate-700/30 rounded-xl p-2 px-3 flex justify-between items-center text-xs">
+                                    <span class="text-rose-400 font-bold uppercase">🚫 ${nombreExp}</span>
+                                    <button onclick="indultarUsuario('${nombreExp}')" class="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 font-black px-2.5 py-1 rounded-lg text-[10px] transition-all cursor-pointer">🔓 Indultar</button>
+                                </div>
+                            `;
+                        }
+                    });
+                } else { if (seccionExpulsados) seccionExpulsados.classList.add('hidden'); }
+
+                // RENDERING COMPARTIDO: Historial Avanzado
+                const listaPalmaresDiv = document.getElementById('lista-palmares');
+                const seccionPalmares = document.getElementById('seccion-palmares');
+                if (listaPalmaresDiv) listaPalmaresDiv.innerHTML = '';
+                const entradasHistorial = Object.values(data.historial || {}).reverse(); 
+
+                if (entradasHistorial.length > 0) {
+                    if (seccionPalmares) seccionPalmares.classList.remove('hidden');
+                    entradasHistorial.forEach(h => {
+                        let isPollPublico = h.tipo === 'votacion' && h.modoVoto === 'publico';
+                        let badgeGanador = '';
+                        let clickAttr = '';
+                        let borderStyle = 'border-slate-700/40';
+                        let tagAuxiliar = '';
+                        let bloqueResultadosInferior = ''; 
+
+                        if (h.tipo === 'votacion' && h.resultados) {
+                            const r = h.resultados;
+                            let isRechazado = h.ganadorVoto && h.ganadorVoto.includes("RECHAZADO");
+                            
+                            let bgGanador = (h.ganadorVoto === 'EMPATE' || isRechazado)
+                                ? 'bg-slate-700/50 text-slate-300 border-slate-600' 
+                                : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'; 
+                            
+                            if (isRechazado) bgGanador = 'bg-rose-500/20 text-rose-400 border-rose-500/30';
+                            
+                            bloqueResultadosInferior = `<div class="flex flex-wrap gap-x-3 gap-y-1.5 text-[9px] font-bold mt-3 bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-700/50 w-full justify-start shadow-inner">`;
+                            Object.entries(r).forEach(([op, cant], idx) => {
+                                let c = idx < paletaColoresGlobal.length ? paletaColoresGlobal[idx] : '#cbd5e1';
+                                bloqueResultadosInferior += `<div class="flex items-center"><span style="color:${c}" class="truncate max-w-[100px]">${op}</span><span class="text-slate-300 ml-1">: ${cant}</span></div>`;
+                            });
+                            bloqueResultadosInferior += `</div>`;
+
+                                                        bloqueResultadosInferior += `</div>`;
+
+                            // Lógica para cambiar el icono según el resultado
+                            let iconoGanador = isRechazado ? '❌' : (h.ganadorVoto === 'EMPATE' ? '⚖️' : '🥇');
+
+                            // Quitamos el "truncate" y añadimos "whitespace-normal" y "break-words" para que haga salto de línea
+                            badgeGanador = `
+                                <span class="px-2 py-1 rounded border ${bgGanador} font-black text-[9px] tracking-wider uppercase shadow-sm max-w-[140px] inline-block text-right whitespace-normal break-words leading-tight" title="${h.ganadorVoto}">
+                                    ${iconoGanador} ${h.ganadorVoto}
+                                </span>
+                            `;
+
+                            if (isPollPublico) {
+
+                                const stringVotos = encodeURIComponent(JSON.stringify(h.votosDetalle || {}));
+                                clickAttr = `onclick="mostrarDetalleVotos('${stringVotos}', '${h.titulo.replace(/'/g, "\\'")}')"`;
+                                borderStyle = 'border-purple-500/40 hover:bg-slate-700/40 cursor-pointer active:scale-[0.99] transition-all';
+                                tagAuxiliar = `<span class="text-[9px] text-purple-400 font-bold block mt-1">👁️ Pulsar para auditar votos</span>`;
+                            } else {
+                                tagAuxiliar = `<span class="text-[9px] text-slate-500 italic block mt-1">🔒 Consulta Anónima</span>`;
+                            }
+                        } else {
+                            badgeGanador = h.puntos === "Cerrada" 
+                                ? `<span class="text-emerald-400 font-mono font-bold block">${h.winner}</span>`
+                                : `<span class="text-amber-400 font-bold block">👑 ${h.winner || h.ganador}</span><span class="text-[10px] text-slate-400 font-medium">${h.puntos} pts</span>`;
+                        }
+
+                        // NUEVO: Botón de Clonar
+                        let btnClonar = soyElCreadorOficial && h.tipo === 'votacion' 
+                            ? `<button onclick="clonarVotacion('${encodeURIComponent(JSON.stringify(h))}')" class="ml-2 text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-slate-950 px-1.5 py-0.5 rounded font-bold transition-all shadow-sm" title="Reabrir esta votación">🔄 Reabrir</button>` 
+                            : '';
+
+                        if (listaPalmaresDiv) {
+                            listaPalmaresDiv.innerHTML += `
+                                <div ${clickAttr} class="bg-slate-900/40 border ${borderStyle} rounded-xl p-3 flex flex-col text-xs shadow-sm">
+                                    <div class="flex justify-between items-start gap-2 w-full">
+                                        <div class="flex-1 pr-2 min-w-0">
+                                            <span class="font-black text-slate-200 block truncate" title="${h.titulo}">${h.titulo}</span>
+                                            <span class="text-[10px] text-slate-500 font-mono block mt-0.5">${h.fecha}</span>
+                                            ${tagAuxiliar}
+                                        </div>
+                                        <div class="text-right shrink-0 flex flex-col items-end gap-1">${badgeGanador}${btnClonar}</div>
+                                    </div>
+                                    ${bloqueResultadosInferior}
+                                </div>
+                            `;
+                        }
+                    });
+                } else { if (seccionPalmares) seccionPalmares.classList.add('hidden'); }
+            });
+
+            // ================== EXPORTAR ACTA (NUEVO) ==================
+            window.descargarActa = function() {
+                if (!estadoActualGrupo || !estadoActualGrupo.historial) {
+                    alert("No hay historial para exportar.");
+                    return;
+                }
+                
+                let acta = `========================================================\n`;
+                acta += ` ACTA DE LA SESIÓN: ${estadoActualGrupo.titulo.toUpperCase()}\n`;
+                acta += ` Fecha de exportación: ${new Date().toLocaleString()}\n`;
+                acta += `========================================================\n\n`;
+                
+                let censoList = Object.keys(estadoActualGrupo.participantes || {});
+                acta += `[CENSO OFICIAL DE PRESENTES]\n`;
+                acta += `${censoList.join(', ') || 'Ninguno'}\n\n`;
+                
+                if (estadoActualGrupo.delegaciones) {
+                    acta += `[VOTOS DELEGADOS]\n`;
+                    Object.entries(estadoActualGrupo.delegaciones).forEach(([rep, del]) => {
+                        acta += `- ${rep} representa a: ${del}\n`;
+                    });
+                    acta += `\n`;
+                }
+                
+                acta += `--------------------------------------------------------\n\n`;
+                
+                const entradasHistorial = Object.values(estadoActualGrupo.historial);
+                entradasHistorial.forEach(h => {
+                    acta += `PUNTO: ${h.titulo}\n`;
+                    acta += `FECHA: ${h.fecha}\n`;
+                    
+                    if (h.tipo === 'votacion') {
+                        let privacidad = h.modoVoto === 'publico' ? 'Pública' : 'Secreta';
+                        let mayoria = h.tipoMayoria === 'absoluta' ? 'Absoluta' : h.tipoMayoria === 'cualificada' ? 'Cualificada (2/3)' : 'Simple';
+                        
+                        acta += `CONFIGURACIÓN: Votación ${privacidad} | Mayoría exigida: ${mayoria}\n`;
+                        acta += `>> RESULTADO FINAL: ${h.ganadorVoto}\n`;
+                        acta += `RECUENTO DE VOTOS:\n`;
+                        
+                        Object.entries(h.resultados || {}).forEach(([op, cant]) => {
+                            acta += `  - ${op}: ${cant}\n`;
+                        });
+                        
+                        if (h.modoVoto === 'publico' && h.votosDetalle) {
+                            acta += `\nAUDITORÍA DE VOTOS INDIVIDUALES:\n`;
+                            Object.entries(h.votosDetalle).forEach(([nombre, voto]) => {
+                                acta += `  > ${nombre} votó: ${voto}\n`;
+                            });
+                        }
+                    } else {
+                        acta += `>> GANADOR DEL PIQUE: ${h.winner} (${h.puntos} puntos)\n`;
+                    }
+                    acta += `\n--------------------------------------------------------\n\n`;
+                });
+                
+                const blob = new Blob([acta], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Acta_Podio_${estadoActualGrupo.titulo.replace(/\s+/g, '_')}_${Date.now()}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            // ================== CLONAR VOTACIÓN (NUEVO) ==================
+            window.clonarVotacion = function(historialStrEscaped) {
+                if(!confirm("¿Quieres llevar esta pregunta a borradores para relanzarla?")) return;
+                const h = JSON.parse(decodeURIComponent(historialStrEscaped));
+                
+                const selectModo = document.getElementById('select-modo-voto-pregunta');
+                const selectMayoria = document.getElementById('select-mayoria');
+                
+                const tituloLimpio = h.titulo.replace('Consulta: ', '').trim();
+                const nuevoBorId = 'bor_' + Date.now();
+                const updates = {};
+                
+                updates[`/borradores/${nuevoBorId}`] = { 
+                    para: tituloLimpio, 
+                    modoVoto: h.modoVoto || 'publico',
+                    duracion: 0, 
+                    opciones: h.opciones || ['SÍ', 'NO', 'ABS'],
+                    tipoMayoria: h.tipoMayoria || 'simple'
+                };
+                
+                update(grupoRef, updates).then(() => {
+                    alert("✅ Votación copiada a Borradores. Ya puedes ajustarla o relanzarla.");
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            };
+
+            // ================== BORRADORES ==================
+            window.guardarBorrador = function() {
+                const input = document.getElementById('nuevo-nombre');
+                if (!input) return;
+                const valor = input.value.trim();
+                if (valor === "") { alert("⚠️ Escribe primero el título de la consulta para poder guardarla."); return; }
+
+                const selectModo = document.getElementById('select-modo-voto-pregunta');
+                const selectTiempo = document.getElementById('select-tiempo-votacion');
+                const selectMayoria = document.getElementById('select-mayoria');
+                const inputOpcionesCustom = document.getElementById('input-opciones-custom');
+                
+                const modoVotoPregunta = selectModo ? selectModo.value : 'publico';
+                const tiempoVotacion = selectTiempo ? parseInt(selectTiempo.value) : 0;
+                const tipoMayoria = selectMayoria ? selectMayoria.value : 'simple';
+                
+                let opcionesCrudas = inputOpcionesCustom && inputOpcionesCustom.value.trim() !== "" ? inputOpcionesCustom.value : "";
+                let opcionesArray = ['SÍ', 'NO', 'ABS']; 
+                if (opcionesCrudas !== "") {
+                    opcionesArray = opcionesCrudas.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "");
+                }
+
+                const nuevoBorId = 'bor_' + Date.now();
+                const updates = {};
+                updates[`/borradores/${nuevoBorId}`] = { 
+                    para: valor, 
+                    modoVoto: modoVotoPregunta,
+                    duracion: tiempoVotacion,
+                    opciones: opcionesArray,
+                    tipoMayoria: tipoMayoria
+                };
+                
+                update(grupoRef, updates).then(() => {
+                    input.value = "";
+                    if (inputOpcionesCustom) inputOpcionesCustom.value = "";
+                });
+            };
+
+            window.lanzarDesdeBorrador = function(idBor) {
+                if (!estadoActualGrupo || !estadoActualGrupo.borradores || !estadoActualGrupo.borradores[idBor]) return;
+                const b = estadoActualGrupo.borradores[idBor];
+
+                const nuevaPeticionId = 'pet_' + Date.now();
+                const updates = {};
+                
+                updates[`/peticiones/${nuevaPeticionId}`] = { 
+                    para: b.para, 
+                    solicitado_por: miNombre, 
+                    votos: {}, 
+                    tipo: "POLL", 
+                    modoVoto: b.modoVoto,
+                    duracion: b.duracion,
+                    timestampInicio: Date.now(),
+                    opciones: b.opciones || ['SÍ', 'NO', 'ABS'],
+                    tipoMayoria: b.tipoMayoria || 'simple'
+                };
+                
+                updates[`/borradores/${idBor}`] = null;
+                update(grupoRef, updates);
+            };
+
+            window.borrarBorrador = function(idBor) {
+                if(!confirm("¿Seguro que quieres eliminar esta consulta preparada?")) return;
+                set(ref(db, `grupos/${grupoId}/borradores/${idBor}`), null);
+            };
+
+            // ================== DELEGAR VOTO ==================
+            window.delegarVoto = function(nombreRepresentante) {
+                let actual = "";
+                if (estadoActualGrupo && estadoActualGrupo.delegaciones && estadoActualGrupo.delegaciones[nombreRepresentante]) {
+                    actual = estadoActualGrupo.delegaciones[nombreRepresentante];
+                }
+                const representados = prompt(`Estás añadiendo poderes de voto a: ${nombreRepresentante.toUpperCase()}\n\n¿A quién va a representar?\n(Escribe sus nombres separados por coma. Ej: Juan, María)\n\nDéjalo en blanco para quitarle las representaciones:`, actual);
+                
+                if (representados !== null) {
+                    if (representados.trim() === "") {
+                        set(ref(db, `grupos/${grupoId}/delegaciones/${nombreRepresentante}`), null);
+                    } else {
+                        const updates = {};
+                        updates[`/delegaciones/${nombreRepresentante}`] = representados.trim();
+                        update(grupoRef, updates);
+                    }
+                }
+            };
+
+            window.votarPoll = function(id, tipoVoto, quienVota) {
+                set(ref(db, `grupos/${grupoId}/peticiones/${id}/votos/${quienVota}`), tipoVoto);
+            };
+
+            window.agregarAmigo = function() {
+                const input = document.getElementById('nuevo-nombre');
+                if (!input) return;
+                const valor = input.value.trim();
+                if (valor === "") return;
+
+                if (estadoActualGrupo && estadoActualGrupo.tipo === 'votacion') {
+                    const nuevaPeticionId = 'pet_' + Date.now();
+                    const selectModo = document.getElementById('select-modo-voto-pregunta');
+                    const selectTiempo = document.getElementById('select-tiempo-votacion');
+                    const selectMayoria = document.getElementById('select-mayoria');
+                    const inputOpcionesCustom = document.getElementById('input-opciones-custom'); 
+                    
+                    const modoVotoPregunta = selectModo ? selectModo.value : 'publico';
+                    const tiempoVotacion = selectTiempo ? parseInt(selectTiempo.value) : 0;
+                    const tipoMayoria = selectMayoria ? selectMayoria.value : 'simple';
+                    
+                    let opcionesCrudas = inputOpcionesCustom && inputOpcionesCustom.value.trim() !== "" ? inputOpcionesCustom.value : "";
+                    let opcionesArray = ['SÍ', 'NO', 'ABS']; 
+                    if (opcionesCrudas !== "") {
+                        opcionesArray = opcionesCrudas.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "");
+                    }
+
+                    const updates = {};
+                    updates[`/peticiones/${nuevaPeticionId}`] = { 
+                        para: valor, 
+                        solicitado_por: miNombre, 
+                        votos: {}, 
+                        tipo: "POLL", 
+                        modoVoto: modoVotoPregunta,
+                        duracion: tiempoVotacion,
+                        timestampInicio: Date.now(),
+                        opciones: opcionesArray,
+                        tipoMayoria: tipoMayoria
+                    };
+                    update(grupoRef, updates);
+                    if (inputOpcionesCustom) inputOpcionesCustom.value = ""; 
+                } else {
+                    const updates = {};
+                    updates[`/participantes/${valor}`] = 0;
+                    update(grupoRef, updates);
+                }
+                input.value = ""; 
+            };
+
+            window.solicitarPunto = function(nombre, puntosActuales) {
+                const participantes = estadoActualGrupo.participantes || {};
+                const numTotalAmigos = Object.keys(participantes).length;
+
+                if (numTotalAmigos <= 2) {
+                    if (nombre.toLowerCase().trim() === miNombre.toLowerCase().trim()) {
+                        const nuevaPeticionId = 'pet_' + Date.now();
+                        const updates = {};
+                        updates[`/peticiones/${nuevaPeticionId}`] = { para: nombre, puntos_actuales: puntosActuales, solicitado_por: miNombre, votos: {}, tipo: "PUNTO" };
+                        update(grupoRef, updates);
+                    } else {
+                        const updates = {};
+                        updates[`/participantes/${nombre}`] = puntosActuales + 1;
+                        update(grupoRef, updates);
+                    }
+                    return;
+                }
+
+                const nuevaPeticionId = 'pet_' + Date.now();
+                const updates = {};
+                const votosIniciales = {};
+                if (nombre.toLowerCase().trim() !== miNombre.toLowerCase().trim()) votosIniciales[miNombre] = "SI";
+
+                updates[`/peticiones/${nuevaPeticionId}`] = { para: nombre, puntos_actuales: puntosActuales, solicitado_por: miNombre, votos: votosIniciales, tipo: "PUNTO" };
+                update(grupoRef, updates);
+            };
+
+            window.solicitarExpulsion = function(nombreAExpulsar) {
+                if (!confirm(`¿Quieres echar a "${nombreAExpulsar}" del grupo?`)) return;
+                const participantes = estadoActualGrupo.participantes || {};
+                const numTotalAmigos = Object.keys(participantes).length;
+                const tipoSala = estadoActualGrupo.tipo || 'pique';
+
+                if (tipoSala === 'votacion' || numTotalAmigos <= 2) {
+                    const updates = {};
+                    updates[`/participantes/${nombreAExpulsar}`] = null;
+                    updates[`/expulsados/${nombreAExpulsar.toLowerCase().trim()}`] = true;
+                    update(grupoRef, updates);
+                    alert(`🚀 "${nombreAExpulsar}" ha sido expulsado directamente de la sala.`);
+                    return;
+                }
+
+                const nuevaPeticionId = 'pet_' + Date.now();
+                const updates = {};
+                const votosIniciales = {};
+                votosIniciales[miNombre] = "SI"; 
+
+                updates[`/peticiones/${nuevaPeticionId}`] = { para: nombreAExpulsar, solicitado_por: miNombre, votos: votosIniciales, tipo: "EXPULSION" };
+                update(grupoRef, updates);
+            };
+
+            window.indultarUsuario = function(nombreParaPerdonar) {
+                if (!confirm(`¿Quieres perdonar a "${nombreParaPerdonar.toUpperCase()}"?`)) return;
+                set(ref(db, `grupos/${grupoId}/expulsados/${nombreParaPerdonar.toLowerCase().trim()}`), null);
+            };
+
+            window.cerrarVotacionManualmente = function(id, preguntaTexto) {
+                if (!estadoActualGrupo || !estadoActualGrupo.creador) return;
+                const creadorOficialValido = estadoActualGrupo.creador.toLowerCase().trim() === miNombre.toLowerCase().trim();
+                if (!creadorOficialValido) return;
+
+                const peticion = estadoActualGrupo.peticiones[id];
+                if (!peticion) return;
+                
+                const votos = peticion.votos || {};
+                const opciones = peticion.opciones || ['SÍ', 'NO', 'ABS']; 
+                const tipoMayoria = peticion.tipoMayoria || 'simple';
+                
+                // LÓGICA DE MAYORÍAS
+                // 1. Calcular censo total (Presentes + Delegados)
+                let censoTotal = Object.keys(estadoActualGrupo.participantes || {}).length;
+                if (estadoActualGrupo.delegaciones) {
+                    Object.values(estadoActualGrupo.delegaciones).forEach(d => {
+                        censoTotal += d.split(',').filter(s => s.trim() !== "").length;
+                    });
+                }
+
+                // 2. Calcular votos por opción
+                let maxVotos = -1;
+                let ganadorVoto = "EMPATE";
+                const resEstructura = {};
+                
+                opciones.forEach(op => {
+                    let cant = Object.values(votos).filter(v => v === op).length;
+                    resEstructura[op] = cant;
+                    if (cant > maxVotos) {
+                        maxVotos = cant;
+                        ganadorVoto = op;
+                    } else if (cant === maxVotos) {
+                        ganadorVoto = "EMPATE";
+                    }
+                });
+
+                // 3. Aplicar regla de mayoría si no hay empate
+                if (ganadorVoto !== "EMPATE") {
+                    if (tipoMayoria === 'absoluta') {
+                        // Tiene que ser más de la mitad estricta del censo total
+                        if (maxVotos <= censoTotal / 2) ganadorVoto = "RECHAZADO (Sin May. Absoluta)";
+                    } else if (tipoMayoria === 'cualificada') {
+                        // Tiene que ser 2/3 o más del censo total
+                        if (maxVotos < censoTotal * (2/3)) ganadorVoto = "RECHAZADO (Sin May. Cualificada)";
+                    }
+                }
+
+                const hoy = new Date();
+                const fechaStr = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
+                const modoVotoPregunta = peticion.modoVoto || 'publico';
+
+                if (window.intervalsVotaciones && window.intervalsVotaciones[id]) {
+                    clearInterval(window.intervalsVotaciones[id]);
+                    delete window.intervalsVotaciones[id];
+                }
+
+                const detalleVotosFinal = (modoVotoPregunta === 'publico') ? votos : null;
+
+                const updates = {};
+                updates[`/peticiones/${id}`] = null; 
+                updates[`/historial/hist_${Date.now()}`] = {
+                    titulo: `Consulta: ${preguntaTexto}`,
+                    resultados: resEstructura,
+                    ganadorVoto: ganadorVoto,
+                    fecha: fechaStr,
+                    tipo: "votacion",
+                    modoVoto: modoVotoPregunta,
+                    votosDetalle: detalleVotosFinal,
+                    opciones: opciones,
+                    tipoMayoria: tipoMayoria,
+                    censoFinal: censoTotal
+                };
+                update(grupoRef, updates);
+            };
+
+            window.votarTribunal = function(id, tipoVoto, para, puntosActuales, votosJSON, votantesPosiblesBase, tipoPeticion) {
+                const votos = JSON.parse(decodeURIComponent(votosJSON)) || {};
+                votos[miNombre] = tipoVoto;
+                const conteoSi = Object.values(votos).filter(v => v === "SI").length;
+                const conteoNo = Object.values(votos).filter(v => v === "NO").length;
+                const conteoAbs = Object.values(votos).filter(v => v === "ABS").length;
+                const votantesEfectivos = votantesPosiblesBase - conteoAbs;
+                
+                const updates = {};
+                if (votantesEfectivos <= 0) { updates[`/peticiones/${id}`] = null; update(grupoRef, updates); return; }
+                const vPasar = Math.floor(votantesEfectivos / 2) + 1;
+                const vRechazar = Math.ceil(votantesEfectivos / 2);
+                
+                if (conteoSi >= vPasar) {
+                    if (tipoPeticion === "EXPULSION") {
+                        updates[`/participantes/${para}`] = null;
+                        updates[`/expulsados/${para.toLowerCase().trim()}`] = true;
+                    } else { updates[`/participantes/${para}`] = puntosActuales + 1; }
+                    updates[`/peticiones/${id}`] = null;
+                } else if (conteoNo >= vRechazar) {
+                    updates[`/peticiones/${id}`] = null;
+                } else {
+                    set(ref(db, `grupos/${grupoId}/peticiones/${id}/votos/${miNombre}`), tipoVoto);
+                    return;
+                }
+                update(grupoRef, updates);
+            };
+
+            window.borrarSala = function() {
+                if (!estadoActualGrupo) return;
+                if (!estadoActualGrupo.creador || estadoActualGrupo.creador.toLowerCase().trim() !== miNombre.toLowerCase().trim()) return;
+                if (!confirm(`🚨 ¿Quieres ELIMINAR por completo la sala "${grupoId.toUpperCase()}"?`)) return;
+
+                set(grupoRef, null).then(() => {
+                    const salasGuardadas = JSON.parse(localStorage.getItem('podio_historial_salas')) || {};
+                    delete salasGuardadas[grupoId];
+                    localStorage.setItem('podio_historial_salas', JSON.stringify(salasGuardadas));
+                    localStorage.removeItem(`pique_nombre_usuario_${grupoId}`);
+                    window.location.search = ""; 
+                });
+            };
+
+            window.finalizarPique = function() {
+                if (!estadoActualGrupo || !estadoActualGrupo.participantes) return;
+                if (!estadoActualGrupo.creador || estadoActualGrupo.creador.toLowerCase().trim() !== miNombre.toLowerCase().trim()) return;
+
+                const participantes = estadoActualGrupo.participantes;
+                const ordenados = Object.entries(participantes).sort((a, b) => b[1] - a[1]);
+                if (ordenados.length === 0) return;
+                if (!confirm(`¿Cerrar el pique actual? Se guardará al campeón.`)) return;
+
+                const [ganador, puntos] = ordenados[0];
+                const tituloAnterior = estadoActualGrupo.titulo;
+                const nuevoTitulo = prompt("🏆 ¿Cómo se llamará el SIGUIENTE pique del grupo?");
+                if (!nuevoTitulo || nuevoTitulo.trim() === "") return;
+
+                const participantesReseteados = {};
+                Object.keys(participantes).forEach(k => { participantesReseteados[k] = 0; });
+                const hoy = new Date();
+                const fechaStr = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
+
+                const updates = {};
+                updates['/titulo'] = nuevoTitulo.trim();
+                updates['/participantes'] = participantesReseteados;
+                updates['/peticiones'] = null;
+                updates[`/historial/hist_${Date.now()}`] = { titulo: tituloAnterior, winner: ganador, puntos: puntos, fecha: fechaStr };
+                update(grupoRef, updates);
+            };
+
+            window.toggleQR = function() {
+                const contenedor = document.getElementById('contenedor-qr');
+                const img = document.getElementById('img-qr');
+                if (!contenedor || !img) return;
+                if (contenedor.classList.contains('hidden')) {
+                    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(window.location.href)}`;
+                    contenedor.classList.remove('hidden');
+                } else { contenedor.classList.add('hidden'); }
+            };
+
+            window.cambiarTitulo = function() {
+                if (!estadoActualGrupo || !estadoActualGrupo.creador) return;
+                if (estadoActualGrupo.creador.toLowerCase().trim() !== miNombre.toLowerCase().trim()) {
+                    alert("⚠️ Acción denegada: Solo el creador original puede cambiar el título.");
+                    return;
+                }
+                const nuevoTitulo = prompt("¿Cambiar el nombre del pique/sala?");
+                if (nuevoTitulo && nuevoTitulo.trim() !== "") { update(grupoRef, { titulo: nuevoTitulo.trim() }); }
+            };
+
+            window.copyEnlaceInvitacion = function() {
+                navigator.clipboard.writeText(window.location.href);
+                alert("¡Enlace copiado al portapapeles!");
+            };
+
+            window.salirDelGrupo = function() { window.location.search = ""; };
+        }
+
+        window.crearGrupo = function() {
+            const input = document.getElementById('input-nombre-grupo');
+            const inputPass = document.getElementById('input-pass-grupo');
+            const selectTipo = document.getElementById('select-tipo-sala');
+            const checkPass = document.getElementById('check-con-pass'); 
+            if (!input || !inputPass || !selectTipo) return;
+
+            const tipoSala = selectTipo.value;
+            const nombreRaw = input.value.trim();
+            const password = checkPass.checked ? inputPass.value.trim() : "";
+
+            if (nombreRaw === "") { alert("⚠️ Pon un nombre a la sala."); return; }
+            if (checkPass.checked && password === "") { alert("⚠️ Has elegido protegerla, pon una contraseña."); return; }
+            
+            const idLimpio = nombreRaw.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+            if (idLimpio === "") return;
+
+            const checkRef = ref(db, `grupos/${idLimpio}`);
+            get(checkRef).then((snapshot) => {
+                if (snapshot.exists()) { alert("⚠️ ¡Esta sala ya existe!"); }
+                else {
+                    set(checkRef, { 
+                        titulo: tipoSala === 'pique' ? "Pique de Inauguración 🚀" : "Votación de Inauguración 🗳️", 
+                        password: password,
+                        tipo: tipoSala,
+                        participantes: {} 
+                    }).then(() => { window.location.search = `?grupo=${idLimpio}`; });
+                }
+            }).catch((err) => alert("Error: " + err.message));
+        };
+
+        window.unirseGrupo = function() {
+            const inputUnir = document.getElementById('input-unir-nombre');
+            const inputPass = document.getElementById('input-unir-pass');
+            if (!inputUnir || !inputPass) return;
+
+            const nombreRaw = inputUnir.value.trim();
+            const passwordInput = inputPass.value.trim();
+
+            if (nombreRaw === "") { alert("⚠️ Introduce el nombre de la sala."); return; }
+            const idLimpio = text => text.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+            const checkRef = ref(db, `grupos/${idLimpio(nombreRaw)}`);
+
+            get(checkRef).then((snapshot) => {
+                if (!snapshot.exists()) { alert("⚠️ La sala no existe."); }
+                else {
+                    const dataSala = snapshot.val();
+                    if (!dataSala.password || dataSala.password === "" || dataSala.password.toString().trim() === passwordInput.toString().trim()) {
+                        window.location.search = `?grupo=${idLimpio(nombreRaw)}`;
+                    } else { alert("❌ Contraseña incorrecta."); }
+                }
+            }).catch((err) => alert("Error: " + err.message));
+        };
+    </script>
+</body>
+</html>
