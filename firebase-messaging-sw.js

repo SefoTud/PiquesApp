@@ -1,0 +1,32 @@
+// Importar las librerías de Firebase dentro del Service Worker
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
+
+// Las credenciales públicas de tu proyecto
+const firebaseConfig = {
+    apiKey: "AIzaSyCZTeSDkC7r68FB1dJv32glfFUjOWve2Ns",
+    authDomain: "piquesapp.firebaseapp.com",
+    databaseURL: "https://piquesapp-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "piquesapp",
+    storageBucket: "piquesapp.firebasestorage.app",
+    messagingSenderId: "25556929122",
+    appId: "1:25556929122:web:7b77916a36f783354b9f3b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+// Capturar las notificaciones cuando la app está cerrada
+messaging.onBackgroundMessage((payload) => {
+    console.log('Notificación recibida en segundo plano: ', payload);
+
+    const tituloNotificacion = payload.data.titulo || "🗳️ Podio - ¡Votación!";
+    const opcionesNotificacion = {
+        body: payload.data.cuerpo || "Tienes una votación pendiente. ¡Entra a votar!",
+        icon: "https://img.icons8.com/color/96/ballot-box.png", 
+        badge: "https://img.icons8.com/color/96/ballot-box.png",
+        vibrate: [200, 100, 200]
+    };
+
+    self.registration.showNotification(tituloNotificacion, opcionesNotificacion);
+});
