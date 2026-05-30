@@ -225,9 +225,10 @@
                                 alert("🔔 ¡Notificaciones activadas! Ahora te avisaremos si te toca votar aunque cierres la web.");
                             }
                         }
-                    }).catch((err) => {
-                        console.log('Error al obtener el token: ', err);
+                                        }).catch((err) => {
+                        alert('🚨 Fallo al crear el Token: ' + err.message);
                     });
+
                 } else {
                     alert("❌ Has denegado los permisos. No te llegarán avisos.");
                 }
