@@ -203,9 +203,26 @@
         const db = getDatabase(app);
         const paletaColoresGlobal = ['#10b981', '#f43f5e', '#eab308', '#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#84cc16'];
 
-        const urlParams = new URLSearchParams(window.location.search);
+                        const urlParams = new URLSearchParams(window.location.search);
         const grupoId = urlParams.get('grupo');
         let estadoActualGrupo = null;
+
+        // ================== CONFIGURACIÓN DE TELEGRAM ==================
+        const TELEGRAM_BOT_TOKEN = "8999921205:AAHzEHR8Nyfvy3Cm_kdgyPWgRqHVIj9oCs0"; // ¡Pega aquí tu código largo!
+        const TELEGRAM_CHAT_ID = "-1003950910182"; // ¡Pega aquí tu número con el menos!
+
+        window.enviarMensajeTelegram = function(texto) {
+            if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === "8999921205:AAHzEHR8Nyfvy3Cm_kdgyPWgRqHVIj9oCs0") return;
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: 'HTML' })
+            }).catch(err => console.log("Error Telegram:", err));
+        };
+        // ===============================================================
+
+
         
                 // ESCUCHADORES DE ALERTAS (ZUMBIDOS Y NUEVAS PREGUNTAS)
         if (grupoId) {
@@ -235,14 +252,21 @@
         }
 
 
-        window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
+                window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
             const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
             if (despistados.length === 0) return;
             set(ref(db, `grupos/${grupoId}/zumbido`), { para: despistados, timestamp: Date.now() }).then(() => {
-                alert(`📢 ¡Zumbido enviado a la pantalla de: ${despistados.join(', ')}!`);
+                
+                // Manda el latigazo por Telegram
+                let enlace = window.location.href;
+                let mensaje = `🔔 <b>¡TOQUE DE ATENCIÓN!</b>\nFaltan por votar: <b>${despistados.join(', ')}</b>\n\n👉 <a href="${enlace}">ENTRAR A LA SALA RÁPIDO</a>`;
+                window.enviarMensajeTelegram(mensaje);
+
+                alert(`📢 ¡Aviso enviado a TELEGRAM y a la pantalla de: ${despistados.join(', ')}!`);
                 setTimeout(() => set(ref(db, `grupos/${grupoId}/zumbido`), null), 2000);
             });
         };
+
 
         // HISTORIAL DE GRUPOS LOCAL
         window.pintarHistorialSalas = function() {
@@ -1126,12 +1150,19 @@
                     opciones: b.opciones || ['SÍ', 'NO', 'ABS'],
                     tipoMayoria: b.tipoMayoria || 'simple'
                 };
-                updates[`/borradores/${idBor}`] = null;
+                                updates[`/borradores/${idBor}`] = null;
                 updates['/alerta_nueva_pregunta'] = true;
                 
                 update(grupoRef, updates).then(() => {
+                    
+                    // Mandar aviso a Telegram
+                    let enlace = window.location.href;
+                    let msg = `🚨 <b>NUEVA VOTACIÓN</b> en <b>${grupoId.toUpperCase()}</b>\n\n❓ <i>${b.para}</i>\n👤 Por: <b>${miNombre}</b>\n\n👉 <a href="${enlace}">ENTRAR A VOTAR AQUÍ</a>`;
+                    window.enviarMensajeTelegram(msg);
+
                     setTimeout(() => update(grupoRef, { alerta_nueva_pregunta: null }), 1000);
                 });
+
 
             };
 
@@ -1198,12 +1229,18 @@
                         opciones: opcionesArray,
                         tipoMayoria: tipoMayoria
                     };
-                    // Activamos la señal de alerta
+                                        // Activamos la señal de alerta
                     updates['/alerta_nueva_pregunta'] = true;
                     update(grupoRef, updates).then(() => {
-                        // La apagamos un segundo después para que esté lista para la siguiente pregunta
+                        
+                        // Mandar aviso a Telegram
+                        let enlace = window.location.href;
+                        let msg = `🚨 <b>NUEVA VOTACIÓN</b> en <b>${grupoId.toUpperCase()}</b>\n\n❓ <i>${valor}</i>\n👤 Por: <b>${miNombre}</b>\n\n👉 <a href="${enlace}">ENTRAR A VOTAR AQUÍ</a>`;
+                        window.enviarMensajeTelegram(msg);
+
                         setTimeout(() => update(grupoRef, { alerta_nueva_pregunta: null }), 1000);
                     });
+
 
                 }
                 input.value = ""; 
