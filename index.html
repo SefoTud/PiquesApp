@@ -57,7 +57,7 @@
     </div>
 
     <div id="pantalla-juego" class="w-full max-w-md flex flex-col hidden">
-                <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-start gap-2">
+        <div class="text-xs text-slate-400 mb-2 px-2 flex justify-between items-start gap-2">
             <div class="flex flex-wrap items-center gap-y-1 flex-1 min-w-0">
                 <span class="shrink-0">Sala: </span>
                 <strong id="display-id-grupo" class="text-amber-400 font-mono font-bold truncate max-w-[100px] ml-1 inline-block align-bottom">...</strong> 
@@ -203,28 +203,11 @@
         const db = getDatabase(app);
         const paletaColoresGlobal = ['#10b981', '#f43f5e', '#eab308', '#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#84cc16'];
 
-                        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search);
         const grupoId = urlParams.get('grupo');
         let estadoActualGrupo = null;
 
-        // ================== CONFIGURACIÓN DE TELEGRAM ==================
-        const TELEGRAM_BOT_TOKEN = "8999921205:AAHzEHR8Nyfvy3Cm_kdgyPWgRqHVIj9oCs0"; // ¡Pega aquí tu código largo!
-        const TELEGRAM_CHAT_ID = "-1003950910182"; // ¡Pega aquí tu número con el menos!
-
-        window.enviarMensajeTelegram = function(texto) {
-            if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === "8999921205:AAHzEHR8Nyfvy3Cm_kdgyPWgRqHVIj9oCs0") return;
-            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: 'HTML' })
-            }).catch(err => console.log("Error Telegram:", err));
-        };
-        // ===============================================================
-
-
-        
-                // ESCUCHADORES DE ALERTAS (ZUMBIDOS Y NUEVAS PREGUNTAS)
+        // ESCUCHADORES DE ALERTAS (ZUMBIDOS Y NUEVAS PREGUNTAS)
         if (grupoId) {
             // Escuchador para zumbidos individuales/delegados
             onValue(ref(db, `grupos/${grupoId}/zumbido`), (snapshot) => {
@@ -243,30 +226,22 @@
                 }
             });
 
-            // NUEVO: Escuchador global para hacer vibrar al lanzar cualquier pregunta nueva
+            // Escuchador global para hacer vibrar al lanzar cualquier pregunta nueva
             onValue(ref(db, `grupos/${grupoId}/alerta_nueva_pregunta`), (snapshot) => {
                 if (snapshot.val() === true) {
-                    if (navigator.vibrate) navigator.vibrate([300, 150, 300]); // Vibración doble elegante de aviso
+                    if (navigator.vibrate) navigator.vibrate([300, 150, 300]); 
                 }
             });
         }
 
-
-                window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
+        window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
             const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
             if (despistados.length === 0) return;
             set(ref(db, `grupos/${grupoId}/zumbido`), { para: despistados, timestamp: Date.now() }).then(() => {
-                
-                // Manda el latigazo por Telegram
-                let enlace = window.location.href;
-                let mensaje = `🔔 <b>¡TOQUE DE ATENCIÓN!</b>\nFaltan por votar: <b>${despistados.join(', ')}</b>\n\n👉 <a href="${enlace}">ENTRAR A LA SALA RÁPIDO</a>`;
-                window.enviarMensajeTelegram(mensaje);
-
-                alert(`📢 ¡Aviso enviado a TELEGRAM y a la pantalla de: ${despistados.join(', ')}!`);
+                alert(`📢 ¡Zumbido enviado a la pantalla de: ${despistados.join(', ')}!`);
                 setTimeout(() => set(ref(db, `grupos/${grupoId}/zumbido`), null), 2000);
             });
         };
-
 
         // HISTORIAL DE GRUPOS LOCAL
         window.pintarHistorialSalas = function() {
@@ -288,7 +263,7 @@
                         ? `<button onclick="destruirSalaDesdeHistorial('${id}')" class="text-rose-400 hover:text-rose-600 p-1 font-bold text-xs cursor-pointer shadow">🗑️</button>`
                         : `<button onclick="eliminarDeHistorialLocal('${id}')" class="text-slate-400 hover:text-rose-400 p-1 font-bold text-xs cursor-pointer shadow">❌</button>`;
 
-                                        listaHistorial.innerHTML += `
+                    listaHistorial.innerHTML += `
                         <div class="flex gap-2 items-center w-full bg-slate-700/40 border border-slate-600/30 rounded-xl p-1 pr-3 hover:bg-slate-700/80 transition-all">
                             <button onclick="window.location.search='?grupo=${id}'" class="flex-1 min-w-0 text-left p-2.5 text-xs font-bold truncate text-slate-200 cursor-pointer">
                                 <span class="truncate block">📂 ${tituloSala}</span>
@@ -297,7 +272,6 @@
                             ${botonAccionHistorial}
                         </div>
                     `;
-
                 });
             } else { seccionHistorial.classList.add('hidden'); }
         };
@@ -954,10 +928,8 @@
                             });
                             bloqueResultadosInferior += `</div>`;
 
-                            // Lógica para cambiar el icono según el resultado
                             let iconoGanador = isRechazado ? '❌' : (h.ganadorVoto === 'EMPATE' ? '⚖️' : '🥇');
 
-                            // Quitamos el "truncate" y añadimos "whitespace-normal" y "break-words" para que haga salto de línea
                             badgeGanador = `
                                 <span class="px-2 py-1 rounded border ${bgGanador} font-black text-[9px] tracking-wider uppercase shadow-sm max-w-[140px] inline-block text-right whitespace-normal break-words leading-tight" title="${h.ganadorVoto}">
                                     ${iconoGanador} ${h.ganadorVoto}
@@ -978,7 +950,6 @@
                                 : `<span class="text-amber-400 font-bold block">👑 ${h.winner || h.ganador}</span><span class="text-[10px] text-slate-400 font-medium">${h.puntos} pts</span>`;
                         }
 
-                        // NUEVO: Botón de Clonar
                         let btnClonar = soyElCreadorOficial && h.tipo === 'votacion' 
                             ? `<button onclick="clonarVotacion('${encodeURIComponent(JSON.stringify(h))}')" class="ml-2 text-[10px] bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-slate-950 px-1.5 py-0.5 rounded font-bold transition-all shadow-sm" title="Reabrir esta votación">🔄 Reabrir</button>` 
                             : '';
@@ -1002,7 +973,7 @@
                 } else { if (seccionPalmares) seccionPalmares.classList.add('hidden'); }
             });
 
-            // ================== EXPORTAR ACTA (NUEVO) ==================
+            // ================== EXPORTAR ACTA ==================
             window.descargarActa = function() {
                 if (!estadoActualGrupo || !estadoActualGrupo.historial) {
                     alert("No hay historial para exportar.");
@@ -1068,7 +1039,7 @@
                 URL.revokeObjectURL(url);
             };
 
-            // ================== CLONAR VOTACIÓN (NUEVO) ==================
+            // ================== CLONAR VOTACIÓN ==================
             window.clonarVotacion = function(historialStrEscaped) {
                 if(!confirm("¿Quieres llevar esta pregunta a borradores para relanzarla?")) return;
                 const h = JSON.parse(decodeURIComponent(historialStrEscaped));
@@ -1139,7 +1110,7 @@
                 const nuevaPeticionId = 'pet_' + Date.now();
                 const updates = {};
                 
-                                updates[`/peticiones/${nuevaPeticionId}`] = { 
+                updates[`/peticiones/${nuevaPeticionId}`] = { 
                     para: b.para, 
                     solicitado_por: miNombre, 
                     votos: {}, 
@@ -1150,20 +1121,12 @@
                     opciones: b.opciones || ['SÍ', 'NO', 'ABS'],
                     tipoMayoria: b.tipoMayoria || 'simple'
                 };
-                                updates[`/borradores/${idBor}`] = null;
+                updates[`/borradores/${idBor}`] = null;
                 updates['/alerta_nueva_pregunta'] = true;
                 
                 update(grupoRef, updates).then(() => {
-                    
-                    // Mandar aviso a Telegram
-                    let enlace = window.location.href;
-                    let msg = `🚨 <b>NUEVA VOTACIÓN</b> en <b>${grupoId.toUpperCase()}</b>\n\n❓ <i>${b.para}</i>\n👤 Por: <b>${miNombre}</b>\n\n👉 <a href="${enlace}">ENTRAR A VOTAR AQUÍ</a>`;
-                    window.enviarMensajeTelegram(msg);
-
                     setTimeout(() => update(grupoRef, { alerta_nueva_pregunta: null }), 1000);
                 });
-
-
             };
 
             window.borrarBorrador = function(idBor) {
@@ -1217,7 +1180,7 @@
                         opcionesArray = opcionesCrudas.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "");
                     }
 
-                                        const updates = {};
+                    const updates = {};
                     updates[`/peticiones/${nuevaPeticionId}`] = { 
                         para: valor, 
                         solicitado_por: miNombre, 
@@ -1229,19 +1192,10 @@
                         opciones: opcionesArray,
                         tipoMayoria: tipoMayoria
                     };
-                                        // Activamos la señal de alerta
                     updates['/alerta_nueva_pregunta'] = true;
                     update(grupoRef, updates).then(() => {
-                        
-                        // Mandar aviso a Telegram
-                        let enlace = window.location.href;
-                        let msg = `🚨 <b>NUEVA VOTACIÓN</b> en <b>${grupoId.toUpperCase()}</b>\n\n❓ <i>${valor}</i>\n👤 Por: <b>${miNombre}</b>\n\n👉 <a href="${enlace}">ENTRAR A VOTAR AQUÍ</a>`;
-                        window.enviarMensajeTelegram(msg);
-
                         setTimeout(() => update(grupoRef, { alerta_nueva_pregunta: null }), 1000);
                     });
-
-
                 }
                 input.value = ""; 
             };
@@ -1305,13 +1259,11 @@
             window.cancelarVotacion = function(id) {
                 if (!confirm("🚨 ¿Seguro que quieres CANCELAR y eliminar esta votación en curso? NO se guardará en el historial.")) return;
                 
-                // Si había un temporizador corriendo, lo matamos
                 if (window.intervalsVotaciones && window.intervalsVotaciones[id]) {
                     clearInterval(window.intervalsVotaciones[id]);
                     delete window.intervalsVotaciones[id];
                 }
                 
-                // Borramos la petición de la base de datos sin escribir en el historial
                 const updates = {};
                 updates[`/peticiones/${id}`] = null;
                 update(grupoRef, updates);
@@ -1329,8 +1281,6 @@
                 const opciones = peticion.opciones || ['SÍ', 'NO', 'ABS']; 
                 const tipoMayoria = peticion.tipoMayoria || 'simple';
                 
-                // LÓGICA DE MAYORÍAS
-                // 1. Calcular censo total (Presentes + Delegados)
                 let censoTotal = Object.keys(estadoActualGrupo.participantes || {}).length;
                 if (estadoActualGrupo.delegaciones) {
                     Object.values(estadoActualGrupo.delegaciones).forEach(d => {
@@ -1338,7 +1288,6 @@
                     });
                 }
 
-                // 2. Calcular votos por opción
                 let maxVotos = -1;
                 let ganadorVoto = "EMPATE";
                 const resEstructura = {};
@@ -1354,13 +1303,10 @@
                     }
                 });
 
-                // 3. Aplicar regla de mayoría si no hay empate
                 if (ganadorVoto !== "EMPATE") {
                     if (tipoMayoria === 'absoluta') {
-                        // Tiene que ser más de la mitad estricta del censo total
                         if (maxVotos <= censoTotal / 2) ganadorVoto = "RECHAZADO (Sin May. Absoluta)";
                     } else if (tipoMayoria === 'cualificada') {
-                        // Tiene que ser 2/3 o más del censo total
                         if (maxVotos < censoTotal * (2/3)) ganadorVoto = "RECHAZADO (Sin May. Cualificada)";
                     }
                 }
@@ -1487,62 +1433,62 @@
                 alert("¡Enlace copiado al portapapeles!");
             };
 
+            window.crearGrupo = function() {
+                const input = document.getElementById('input-nombre-grupo');
+                const inputPass = document.getElementById('input-pass-grupo');
+                const selectTipo = document.getElementById('select-tipo-sala');
+                const checkPass = document.getElementById('check-con-pass'); 
+                if (!input || !inputPass || !selectTipo) return;
+
+                const tipoSala = selectTipo.value;
+                const nombreRaw = input.value.trim();
+                const password = checkPass.checked ? inputPass.value.trim() : "";
+
+                if (nombreRaw === "") { alert("⚠️ Pon un nombre a la sala."); return; }
+                if (checkPass.checked && password === "") { alert("⚠️ Has elegido protegerla, pon una contraseña."); return; }
+                
+                const idLimpio = nombreRaw.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+                if (idLimpio === "") return;
+
+                const checkRef = ref(db, `grupos/${idLimpio}`);
+                get(checkRef).then((snapshot) => {
+                    if (snapshot.exists()) { alert("⚠️ ¡Esta sala ya existe!"); }
+                    else {
+                        set(checkRef, { 
+                            titulo: tipoSala === 'pique' ? "Pique de Inauguración 🚀" : "Votación de Inauguración 🗳️", 
+                            password: password,
+                            tipo: tipoSala,
+                            participantes: {} 
+                        }).then(() => { window.location.search = `?grupo=${idLimpio}`; });
+                    }
+                }).catch((err) => alert("Error: " + err.message));
+            };
+
+            window.unirseGrupo = function() {
+                const inputUnir = document.getElementById('input-unir-nombre');
+                const inputPass = document.getElementById('input-unir-pass');
+                if (!inputUnir || !inputPass) return;
+
+                const nombreRaw = inputUnir.value.trim();
+                const passwordInput = inputPass.value.trim();
+
+                if (nombreRaw === "") { alert("⚠️ Introduce el nombre de la sala."); return; }
+                const idLimpio = text => text.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+                const checkRef = ref(db, `grupos/${idLimpio(nombreRaw)}`);
+
+                get(checkRef).then((snapshot) => {
+                    if (!snapshot.exists()) { alert("⚠️ La sala no existe."); }
+                    else {
+                        const dataSala = snapshot.val();
+                        if (!dataSala.password || dataSala.password === "" || dataSala.password.toString().trim() === passwordInput.toString().trim()) {
+                            window.location.search = `?grupo=${idLimpio(nombreRaw)}`;
+                        } else { alert("❌ Contraseña incorrecta."); }
+                    }
+                }).catch((err) => alert("Error: " + err.message));
+            };
+
             window.salirDelGrupo = function() { window.location.search = ""; };
         }
-
-        window.crearGrupo = function() {
-            const input = document.getElementById('input-nombre-grupo');
-            const inputPass = document.getElementById('input-pass-grupo');
-            const selectTipo = document.getElementById('select-tipo-sala');
-            const checkPass = document.getElementById('check-con-pass'); 
-            if (!input || !inputPass || !selectTipo) return;
-
-            const tipoSala = selectTipo.value;
-            const nombreRaw = input.value.trim();
-            const password = checkPass.checked ? inputPass.value.trim() : "";
-
-            if (nombreRaw === "") { alert("⚠️ Pon un nombre a la sala."); return; }
-            if (checkPass.checked && password === "") { alert("⚠️ Has elegido protegerla, pon una contraseña."); return; }
-            
-            const idLimpio = nombreRaw.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-            if (idLimpio === "") return;
-
-            const checkRef = ref(db, `grupos/${idLimpio}`);
-            get(checkRef).then((snapshot) => {
-                if (snapshot.exists()) { alert("⚠️ ¡Esta sala ya existe!"); }
-                else {
-                    set(checkRef, { 
-                        titulo: tipoSala === 'pique' ? "Pique de Inauguración 🚀" : "Votación de Inauguración 🗳️", 
-                        password: password,
-                        tipo: tipoSala,
-                        participantes: {} 
-                    }).then(() => { window.location.search = `?grupo=${idLimpio}`; });
-                }
-            }).catch((err) => alert("Error: " + err.message));
-        };
-
-        window.unirseGrupo = function() {
-            const inputUnir = document.getElementById('input-unir-nombre');
-            const inputPass = document.getElementById('input-unir-pass');
-            if (!inputUnir || !inputPass) return;
-
-            const nombreRaw = inputUnir.value.trim();
-            const passwordInput = inputPass.value.trim();
-
-            if (nombreRaw === "") { alert("⚠️ Introduce el nombre de la sala."); return; }
-            const idLimpio = text => text.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-            const checkRef = ref(db, `grupos/${idLimpio(nombreRaw)}`);
-
-            get(checkRef).then((snapshot) => {
-                if (!snapshot.exists()) { alert("⚠️ La sala no existe."); }
-                else {
-                    const dataSala = snapshot.val();
-                    if (!dataSala.password || dataSala.password === "" || dataSala.password.toString().trim() === passwordInput.toString().trim()) {
-                        window.location.search = `?grupo=${idLimpio(nombreRaw)}`;
-                    } else { alert("❌ Contraseña incorrecta."); }
-                }
-            }).catch((err) => alert("Error: " + err.message));
-        };
     </script>
 </body>
 </html>
