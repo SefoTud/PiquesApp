@@ -74,7 +74,6 @@
             </div>
         </div>
 
-
         <div id="pantalla-espera" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-8 border border-amber-500/30 hidden text-center mt-6">
             <div class="text-5xl mb-6 animate-pulse">⏳</div>
             <h2 class="text-lg font-black text-amber-400 uppercase tracking-widest mb-3">Sala de Espera</h2>
@@ -207,43 +206,63 @@
         const grupoId = urlParams.get('grupo');
         let estadoActualGrupo = null;
 
-        // ESCUCHADORES DE ALERTAS (ZUMBIDOS Y NUEVAS PREGUNTAS)
-        if (grupoId) {
-            // Escuchador para zumbidos individuales/delegados
-            onValue(ref(db, `grupos/${grupoId}/zumbido`), (snapshot) => {
-                const zumbido = snapshot.val();
-                let nombreLocal = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
-                if (zumbido && zumbido.para && nombreLocal) {
-                    let meTocaDirecto = zumbido.para.includes(nombreLocal);
-                    let misRepresentados = [];
-                    if (estadoActualGrupo && estadoActualGrupo.delegaciones && estadoActualGrupo.delegaciones[nombreLocal]) {
-                        misRepresentados = estadoActualGrupo.delegaciones[nombreLocal].split(',').map(s => s.trim());
-                    }
-                    let meTocaPorDelegado = misRepresentados.some(d => zumbido.para.includes(d));
-                    if (meTocaDirecto || meTocaPorDelegado) {
-                        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-                    }
-                }
-            });
+        // =========================================================================
+        // FUNCIONES GLOBALES (FUERA DEL BUCLE PARA EVITAR ERRORES DE REFERENCE)
+        // =========================================================================
+        window.crearGrupo = function() {
+            const input = document.getElementById('input-nombre-grupo');
+            const inputPass = document.getElementById('input-pass-grupo');
+            const selectTipo = document.getElementById('select-tipo-sala');
+            const checkPass = document.getElementById('check-con-pass'); 
+            if (!input || !inputPass || !selectTipo) return;
 
-            // Escuchador global para hacer vibrar al lanzar cualquier pregunta nueva
-            onValue(ref(db, `grupos/${grupoId}/alerta_nueva_pregunta`), (snapshot) => {
-                if (snapshot.val() === true) {
-                    if (navigator.vibrate) navigator.vibrate([300, 150, 300]); 
-                }
-            });
-        }
+            const tipoSala = selectTipo.value;
+            const nombreRaw = input.value.trim();
+            const password = checkPass.checked ? inputPass.value.trim() : "";
 
-        window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
-            const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
-            if (despistados.length === 0) return;
-            set(ref(db, `grupos/${grupoId}/zumbido`), { para: despistados, timestamp: Date.now() }).then(() => {
-                alert(`📢 ¡Zumbido enviado a la pantalla de: ${despistados.join(', ')}!`);
-                setTimeout(() => set(ref(db, `grupos/${grupoId}/zumbido`), null), 2000);
-            });
+            if (nombreRaw === "") { alert("⚠️ Pon un nombre a la sala."); return; }
+            if (checkPass.checked && password === "") { alert("⚠️ Has elegido protegerla, pon una contraseña."); return; }
+            
+            const idLimpio = nombreRaw.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+            if (idLimpio === "") return;
+
+            const checkRef = ref(db, `grupos/${idLimpio}`);
+            get(checkRef).then((snapshot) => {
+                if (snapshot.exists()) { alert("⚠️ ¡Esta sala ya existe!"); }
+                else {
+                    set(checkRef, { 
+                        titulo: tipoSala === 'pique' ? "Pique de Inauguración 🚀" : "Votación de Inauguración 🗳️", 
+                        password: password,
+                        tipo: tipoSala,
+                        participantes: {} 
+                    }).then(() => { window.location.search = `?grupo=${idLimpio}`; });
+                }
+            }).catch((err) => alert("Error: " + err.message));
         };
 
-        // HISTORIAL DE GRUPOS LOCAL
+        window.unirseGrupo = function() {
+            const inputUnir = document.getElementById('input-unir-nombre');
+            const inputPass = document.getElementById('input-unir-pass');
+            if (!inputUnir || !inputPass) return;
+
+            const nombreRaw = inputUnir.value.trim();
+            const passwordInput = inputPass.value.trim();
+
+            if (nombreRaw === "") { alert("⚠️ Introduce el nombre de la sala."); return; }
+            const idLimpio = text => text.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+            const checkRef = ref(db, `grupos/${idLimpio(nombreRaw)}`);
+
+            get(checkRef).then((snapshot) => {
+                if (!snapshot.exists()) { alert("⚠️ La sala no existe."); }
+                else {
+                    const dataSala = snapshot.val();
+                    if (!dataSala.password || dataSala.password === "" || dataSala.password.toString().trim() === passwordInput.toString().trim()) {
+                        window.location.search = `?grupo=${idLimpio(nombreRaw)}`;
+                    } else { alert("❌ Contraseña incorrecta."); }
+                }
+            }).catch((err) => alert("Error: " + err.message));
+        };
+
         window.pintarHistorialSalas = function() {
             const seccionHistorial = document.getElementById('seccion-historial-salas');
             const listaHistorial = document.getElementById('lista-historial-salas');
@@ -301,31 +320,11 @@
             });
         };
 
-        window.mostrarDetalleVotos = function(votosEscaped, tituloConsulta) {
-            const votos = JSON.parse(decodeURIComponent(votosEscaped));
-            let mensaje = `📊 AUDITORÍA DE RESPUESTAS INDIVIDUALES\n"${tituloConsulta}"\n\n`;
-            if (Object.keys(votos).length === 0) {
-                mensaje += `Nadie participó en esta votación. 👻\n`;
-            } else {
-                Object.entries(votos).forEach(([nombre, voto]) => {
-                    mensaje += `👤 ${nombre}: ${voto}\n`;
-                });
-            }
-            alert(mensaje);
-        };
+        window.salirDelGrupo = function() { window.location.search = ""; };
 
-        window.gestionarPendiente = function(nombrePendiente, aprobado) {
-            const updates = {};
-            updates[`/pendientes/${nombrePendiente}`] = null;
-            if (aprobado) {
-                updates[`/participantes/${nombrePendiente}`] = 0;
-            } else {
-                updates[`/expulsados/${nombrePendiente.toLowerCase().trim()}`] = true;
-            }
-            update(ref(db, `grupos/${grupoId}`), updates);
-        };
-
-        // INICIALIZACIÓN PRINCIPAL
+        // =========================================================================
+        // INICIALIZACIÓN DE SALA Y LÓGICA DE JUEGO
+        // =========================================================================
         if (!grupoId) {
             document.getElementById('pantalla-registro-grupo').classList.remove('hidden');
             window.pintarHistorialSalas();
@@ -333,6 +332,63 @@
             document.getElementById('pantalla-juego').classList.remove('hidden');
             document.getElementById('display-id-grupo').innerText = grupoId.toUpperCase();
             const grupoRef = ref(db, `grupos/${grupoId}`);
+
+            // ESCUCHADORES DE ALERTAS (ZUMBIDOS Y NUEVAS PREGUNTAS VIBRACIÓN)
+            onValue(ref(db, `grupos/${grupoId}/zumbido`), (snapshot) => {
+                const zumbido = snapshot.val();
+                let nombreLocal = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
+                if (zumbido && zumbido.para && nombreLocal) {
+                    let meTocaDirecto = zumbido.para.includes(nombreLocal);
+                    let misRepresentados = [];
+                    if (estadoActualGrupo && estadoActualGrupo.delegaciones && estadoActualGrupo.delegaciones[nombreLocal]) {
+                        misRepresentados = estadoActualGrupo.delegaciones[nombreLocal].split(',').map(s => s.trim());
+                    }
+                    let meTocaPorDelegado = misRepresentados.some(d => zumbido.para.includes(d));
+                    if (meTocaDirecto || meTocaPorDelegado) {
+                        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+                    }
+                }
+            });
+
+            onValue(ref(db, `grupos/${grupoId}/alerta_nueva_pregunta`), (snapshot) => {
+                if (snapshot.val() === true) {
+                    if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+                }
+            });
+
+            // FUNCIONES DENTRO DE LA SALA
+            window.enviarZumbidoAAmigos = function(listaDespistadosJSON) {
+                const despistados = JSON.parse(decodeURIComponent(listaDespistadosJSON));
+                if (despistados.length === 0) return;
+                set(ref(db, `grupos/${grupoId}/zumbido`), { para: despistados, timestamp: Date.now() }).then(() => {
+                    alert(`📢 ¡Toque enviado a la pantalla de: ${despistados.join(', ')}!`);
+                    setTimeout(() => set(ref(db, `grupos/${grupoId}/zumbido`), null), 2000);
+                });
+            };
+
+            window.mostrarDetalleVotos = function(votosEscaped, tituloConsulta) {
+                const votos = JSON.parse(decodeURIComponent(votosEscaped));
+                let mensaje = `📊 AUDITORÍA DE RESPUESTAS INDIVIDUALES\n"${tituloConsulta}"\n\n`;
+                if (Object.keys(votos).length === 0) {
+                    mensaje += `Nadie participó en esta votación. 👻\n`;
+                } else {
+                    Object.entries(votos).forEach(([nombre, voto]) => {
+                        mensaje += `👤 ${nombre}: ${voto}\n`;
+                    });
+                }
+                alert(mensaje);
+            };
+
+            window.gestionarPendiente = function(nombrePendiente, aprobado) {
+                const updates = {};
+                updates[`/pendientes/${nombrePendiente}`] = null;
+                if (aprobado) {
+                    updates[`/participantes/${nombrePendiente}`] = 0;
+                } else {
+                    updates[`/expulsados/${nombrePendiente.toLowerCase().trim()}`] = true;
+                }
+                update(ref(db, `grupos/${grupoId}`), updates);
+            };
 
             let miNombre = localStorage.getItem(`pique_nombre_usuario_${grupoId}`);
             let esNuevoRegistro = false; 
@@ -548,7 +604,6 @@
                         if (document.getElementById('seccion-borradores')) document.getElementById('seccion-borradores').classList.add('hidden');
                     }
 
-                    // RENDERING PRESENTES CON DELEGAR
                     let htmlPresentes = '';
                     const delegaciones = data.delegaciones || {};
                     
@@ -584,7 +639,6 @@
                             const opciones = peticion.opciones || ['SÍ', 'NO', 'ABS'];
                             const tipoMayoria = peticion.tipoMayoria || 'simple';
 
-                            // ETIQUETAS DE CONFIGURACIÓN
                             let tagPrivacidadInfo = modoVotoPregunta === 'publico' 
                                 ? '<span class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1 mr-1">👁️ Pública</span>' 
                                 : '<span class="text-[9px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1 mr-1">🕵️ Secreta</span>';
@@ -593,7 +647,6 @@
                             if (tipoMayoria === 'absoluta') tagMayoria = '<span class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1">🏛️ Absoluta</span>';
                             else if (tipoMayoria === 'cualificada') tagMayoria = '<span class="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold whitespace-nowrap inline-block mt-1">⅔ Cualificada</span>';
 
-                            // TEMPORIZADOR
                             let htmlTimer = '';
                             if (peticion.duracion > 0) {
                                 let tiempoPasado = Math.floor((Date.now() - peticion.timestampInicio) / 1000);
@@ -639,7 +692,6 @@
                                 }, 1000);
                             }
 
-                            // FALTANTES Y DELEGADOS
                             let listaTodosEsperados = [];
                             Object.keys(participantes).forEach(p => {
                                 listaTodosEsperados.push(p);
@@ -673,7 +725,6 @@
                             });
                             desgloseResultadosHtml += `</div>`;
 
-                            // BOTONES
                             let misRepresentados = [];
                             if (delegaciones[miNombre]) {
                                 misRepresentados = delegaciones[miNombre].split(',').map(s => s.trim()).filter(s => s !== "");
@@ -973,7 +1024,7 @@
                 } else { if (seccionPalmares) seccionPalmares.classList.add('hidden'); }
             });
 
-            // ================== EXPORTAR ACTA ==================
+            // FUNCIONES AVANZADAS DE SALA
             window.descargarActa = function() {
                 if (!estadoActualGrupo || !estadoActualGrupo.historial) {
                     alert("No hay historial para exportar.");
@@ -1039,13 +1090,9 @@
                 URL.revokeObjectURL(url);
             };
 
-            // ================== CLONAR VOTACIÓN ==================
             window.clonarVotacion = function(historialStrEscaped) {
                 if(!confirm("¿Quieres llevar esta pregunta a borradores para relanzarla?")) return;
                 const h = JSON.parse(decodeURIComponent(historialStrEscaped));
-                
-                const selectModo = document.getElementById('select-modo-voto-pregunta');
-                const selectMayoria = document.getElementById('select-mayoria');
                 
                 const tituloLimpio = h.titulo.replace('Consulta: ', '').trim();
                 const nuevoBorId = 'bor_' + Date.now();
@@ -1065,7 +1112,6 @@
                 });
             };
 
-            // ================== BORRADORES ==================
             window.guardarBorrador = function() {
                 const input = document.getElementById('nuevo-nombre');
                 if (!input) return;
@@ -1134,7 +1180,6 @@
                 set(ref(db, `grupos/${grupoId}/borradores/${idBor}`), null);
             };
 
-            // ================== DELEGAR VOTO ==================
             window.delegarVoto = function(nombreRepresentante) {
                 let actual = "";
                 if (estadoActualGrupo && estadoActualGrupo.delegaciones && estadoActualGrupo.delegaciones[nombreRepresentante]) {
@@ -1432,62 +1477,6 @@
                 navigator.clipboard.writeText(window.location.href);
                 alert("¡Enlace copiado al portapapeles!");
             };
-
-            window.crearGrupo = function() {
-                const input = document.getElementById('input-nombre-grupo');
-                const inputPass = document.getElementById('input-pass-grupo');
-                const selectTipo = document.getElementById('select-tipo-sala');
-                const checkPass = document.getElementById('check-con-pass'); 
-                if (!input || !inputPass || !selectTipo) return;
-
-                const tipoSala = selectTipo.value;
-                const nombreRaw = input.value.trim();
-                const password = checkPass.checked ? inputPass.value.trim() : "";
-
-                if (nombreRaw === "") { alert("⚠️ Pon un nombre a la sala."); return; }
-                if (checkPass.checked && password === "") { alert("⚠️ Has elegido protegerla, pon una contraseña."); return; }
-                
-                const idLimpio = nombreRaw.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-                if (idLimpio === "") return;
-
-                const checkRef = ref(db, `grupos/${idLimpio}`);
-                get(checkRef).then((snapshot) => {
-                    if (snapshot.exists()) { alert("⚠️ ¡Esta sala ya existe!"); }
-                    else {
-                        set(checkRef, { 
-                            titulo: tipoSala === 'pique' ? "Pique de Inauguración 🚀" : "Votación de Inauguración 🗳️", 
-                            password: password,
-                            tipo: tipoSala,
-                            participantes: {} 
-                        }).then(() => { window.location.search = `?grupo=${idLimpio}`; });
-                    }
-                }).catch((err) => alert("Error: " + err.message));
-            };
-
-            window.unirseGrupo = function() {
-                const inputUnir = document.getElementById('input-unir-nombre');
-                const inputPass = document.getElementById('input-unir-pass');
-                if (!inputUnir || !inputPass) return;
-
-                const nombreRaw = inputUnir.value.trim();
-                const passwordInput = inputPass.value.trim();
-
-                if (nombreRaw === "") { alert("⚠️ Introduce el nombre de la sala."); return; }
-                const idLimpio = text => text.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-                const checkRef = ref(db, `grupos/${idLimpio(nombreRaw)}`);
-
-                get(checkRef).then((snapshot) => {
-                    if (!snapshot.exists()) { alert("⚠️ La sala no existe."); }
-                    else {
-                        const dataSala = snapshot.val();
-                        if (!dataSala.password || dataSala.password === "" || dataSala.password.toString().trim() === passwordInput.toString().trim()) {
-                            window.location.search = `?grupo=${idLimpio(nombreRaw)}`;
-                        } else { alert("❌ Contraseña incorrecta."); }
-                    }
-                }).catch((err) => alert("Error: " + err.message));
-            };
-
-            window.salirDelGrupo = function() { window.location.search = ""; };
         }
     </script>
 </body>
